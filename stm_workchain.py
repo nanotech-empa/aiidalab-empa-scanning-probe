@@ -9,7 +9,8 @@ from aiida.work.run import submit
 
 from aiida_cp2k.calculations import Cp2kCalculation
 
-import morbcalculation
+from evalmorbs import EvalmorbsCalculation
+from stmimage import StmimageCalculation
 
 import tempfile
 import shutil
@@ -29,10 +30,13 @@ class STMWorkChain(WorkChain):
         spec.input("eval_orbs_code", valid_type=Code)
         spec.input("eval_orbs_params", valid_type=ParameterData)
         
+        spec.input("stm_image_code", valid_type=Code)
+        spec.input("stm_image_params", valid_type=ParameterData)
+        
         spec.outline(
             cls.run_scf_diag,
             cls.eval_orbs_on_grid,
-            #cls.make_stm_images
+            cls.make_stm_images
         )
         
         spec.dynamic_output()
@@ -56,18 +60,36 @@ class STMWorkChain(WorkChain):
         inputs['_label'] = "eval_morbs"
         inputs['code'] = self.inputs.eval_orbs_code
         inputs['parameters'] = self.inputs.eval_orbs_params
+        inputs['parent_calc_folder'] = self.ctx.scf_diag.out.remote_folder
         inputs['_options'] = {
             "resources": {"num_machines": 1, "num_mpiprocs_per_machine": 4},
             "max_wallclock_seconds": 7200,
         }
         
-        future = submit(morbcalculation.MorbCalculation.process(), **inputs)
-        return ToContext(eval_orbs=future)
+        self.report("Inputs: " + str(inputs))
+        
+        future = submit(EvalmorbsCalculation.process(), **inputs)
+        return ToContext(eval_morbs=future)
         
         
            
     def make_stm_images(self):
         self.report("Extrapolating wavefunctions and making STM/STS images")
+             
+        inputs = {}
+        inputs['_label'] = "stm_images"
+        inputs['code'] = self.inputs.stm_image_code
+        inputs['parameters'] = self.inputs.stm_image_params
+        inputs['parent_calc_folder'] = self.ctx.eval_morbs.out.remote_folder
+        inputs['_options'] = {
+            "resources": {"num_machines": 1},
+            "max_wallclock_seconds": 1600,
+        }
+        
+        self.report("Inputs: " + str(inputs))
+        
+        future = submit(StmimageCalculation.process(), **inputs)
+        return ToContext(stm_image=future)
     
     
      # ==========================================================================

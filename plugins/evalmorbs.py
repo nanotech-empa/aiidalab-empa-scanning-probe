@@ -9,7 +9,7 @@ from aiida.common.datastructures import CalcInfo, CodeInfo
 from aiida.common.exceptions import InputValidationError
 
 
-class MorbCalculation(JobCalculation):
+class EvalmorbsCalculation(JobCalculation):
     """
     This is a MorbCalculation, subclass of JobCalculation.
     """
@@ -19,7 +19,9 @@ class MorbCalculation(JobCalculation):
         """
         Set parameters of instance
         """
-        super(MorbCalculation, self)._init_internal_params()
+        super(EvalmorbsCalculation, self)._init_internal_params()
+        
+        self._PARENT_CALC_FOLDER_NAME = 'parent_calc/'
 
     # --------------------------------------------------------------------------
     @classproperty
@@ -37,10 +39,10 @@ class MorbCalculation(JobCalculation):
                'docstring': "The node that specifies the "
                             "input parameters",
                },
-            "parent_folder": {
+            "parent_calc_folder": {
                'valid_types': RemoteData,
                'additional_parameter': None,
-               'linkname': 'parent_folder',
+               'linkname': 'parent_calc_folder',
                'docstring': "Use a remote folder as parent folder ",
                },
             })
@@ -73,11 +75,11 @@ class MorbCalculation(JobCalculation):
             raise InputValidationError("parameters is not of type ParameterData")
         
         try:
-            parent_folder = inputdict.pop(self.get_linkname('parent_folder'))
+            parent_calc_folder = inputdict.pop(self.get_linkname('parent_calc_folder'))
         except KeyError:
             raise InputValidationError("No parent_folder specified for this calculation")
-        if not isinstance(parent_folder, RemoteData):
-            raise InputValidationError("parent_folder is not of type RemoteData")
+        if not isinstance(parent_calc_folder, RemoteData):
+            raise InputValidationError("parent_calc_folder is not of type RemoteData")
             
         # Here, there should be no more parameters...
         if inputdict:
@@ -92,12 +94,13 @@ class MorbCalculation(JobCalculation):
         codeinfo = CodeInfo()
         codeinfo.code_uuid = code.uuid
         
-        #cmdline = settings.pop('cmdline', [])
-        #cmdline += ["-i", self._INPUT_FILE_NAME]
-        
-        # Note that the script and all of its parameters should be specified here
-        cmdline = [script.filename]
-        cmdline += ["--cp2k_input", "test.inp"]
+        cmdline = []
+        for key in parameters.dict:
+            cmdline += [key]
+            if isinstance(parameters.dict[key], list):
+                cmdline += parameters.dict[key]
+            else:
+                cmdline += [parameters.dict[key]]
         
         codeinfo.cmdline_params = cmdline
 
@@ -111,7 +114,7 @@ class MorbCalculation(JobCalculation):
         calcinfo.remote_symlink_list = []
         calcinfo.local_copy_list = []
         calcinfo.remote_copy_list = []
-        calcinfo.retrieve_list = settings.pop('additional_retrieve_list', [])
+        calcinfo.retrieve_list = []
 
         # symlinks
         if parent_calc_folder is not None:

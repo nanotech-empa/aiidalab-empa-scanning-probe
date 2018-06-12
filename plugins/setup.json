@@ -1,0 +1,11 @@
+{
+    "name": "aiida-stm-plugins",
+    "setup_requires": ["reentry"],
+    "reentry_register": true,
+    "entry_points": {
+        "aiida.calculations": [
+            "stm.eval_morbs = evalmorbs:EvalmorbsCalculation",
+            "stm.stm_image = stmimage:StmimageCalculation"
+        ]
+    }
+}
