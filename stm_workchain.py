@@ -9,8 +9,8 @@ from aiida.work.run import submit
 
 from aiida_cp2k.calculations import Cp2kCalculation
 
-from evalmorbs import EvalmorbsCalculation
-from stmimage import StmimageCalculation
+from apps.stm.plugins.evalmorbs import EvalmorbsCalculation
+from apps.stm.plugins.stmimage import StmimageCalculation
 
 import tempfile
 import shutil
@@ -62,7 +62,7 @@ class STMWorkChain(WorkChain):
         inputs['parameters'] = self.inputs.eval_orbs_params
         inputs['parent_calc_folder'] = self.ctx.scf_diag.out.remote_folder
         inputs['_options'] = {
-            "resources": {"num_machines": 1, "num_mpiprocs_per_machine": 4},
+            "resources": {"num_machines": 2, "num_mpiprocs_per_machine": 6},
             "max_wallclock_seconds": 7200,
         }
         
@@ -124,7 +124,7 @@ class STMWorkChain(WorkChain):
                                    atoms.cell[2, 2])
 
         #num_machines = int(np.round(1. + len(atoms)/120.))
-        num_machines = 3
+        num_machines = 12
         walltime = 3600
 
         inp = cls.get_cp2k_input(cell_abc,
@@ -264,6 +264,21 @@ class STMWorkChain(WorkChain):
             '_': 'Br',
             'BASIS_SET': 'DZVP-MOLOPT-SR-GTH',
             'POTENTIAL': 'GTH-PBE-q7'
+        })
+        force_eval['SUBSYS']['KIND'].append({
+            '_': 'B',
+            'BASIS_SET': 'DZVP-MOLOPT-SR-GTH',
+            'POTENTIAL': 'GTH-PBE-q3'
+        })        
+        force_eval['SUBSYS']['KIND'].append({
+            '_': 'O',
+            'BASIS_SET': 'TZV2P-MOLOPT-GTH',
+            'POTENTIAL': 'GTH-PBE-q6'
+        })
+        force_eval['SUBSYS']['KIND'].append({
+            '_': 'N',
+            'BASIS_SET': 'TZV2P-MOLOPT-GTH',
+            'POTENTIAL': 'GTH-PBE-q5'
         })
         force_eval['SUBSYS']['KIND'].append({
             '_': 'H',
