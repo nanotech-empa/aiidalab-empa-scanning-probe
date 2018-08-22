@@ -1,5 +1,6 @@
 from aiida.orm.data.structure import StructureData
 from aiida.orm.data.parameter import ParameterData
+from aiida.orm.data.array import ArrayData
 from aiida.orm.data.base import Int, Float, Str, Bool
 from aiida.orm.data.singlefile import SinglefileData
 from aiida.orm.code import Code
@@ -9,8 +10,8 @@ from aiida.work.run import submit
 
 from aiida_cp2k.calculations import Cp2kCalculation
 
-from apps.stm.plugins.evalmorbs import EvalmorbsCalculation
-from apps.stm.plugins.stmimage import StmimageCalculation
+from evalmorbs import EvalmorbsCalculation
+from stmimage import StmimageCalculation
 
 import tempfile
 import shutil
@@ -24,6 +25,7 @@ class STMWorkChain(WorkChain):
         
         spec.input("cp2k_code", valid_type=Code)
         spec.input("structure", valid_type=StructureData)
+        spec.input("cell", valid_type=ArrayData)
         spec.input("vdw_switch", valid_type=Bool, default=Bool(False))
         spec.input("mgrid_cutoff", valid_type=Int, default=Int(600))
         
@@ -45,6 +47,7 @@ class STMWorkChain(WorkChain):
         self.report("Running CP2K diagonalization SCF")
 
         inputs = self.build_cp2k_inputs(self.inputs.structure,
+                                        self.inputs.cell,
                                         self.inputs.cp2k_code,
                                         self.inputs.mgrid_cutoff,
                                         self.inputs.vdw_switch)
@@ -84,7 +87,11 @@ class STMWorkChain(WorkChain):
         inputs['_options'] = {
             "resources": {"num_machines": 1},
             "max_wallclock_seconds": 1600,
-        }
+        } 
+        
+        # Need to make an explicit instance for the node to be stored to aiida
+        settings = ParameterData(dict={'additional_retrieve_list': ['stm_output/*.npz']})
+        inputs['settings'] = settings
         
         self.report("Inputs: " + str(inputs))
         
@@ -94,7 +101,7 @@ class STMWorkChain(WorkChain):
     
      # ==========================================================================
     @classmethod
-    def build_cp2k_inputs(cls, structure, code,
+    def build_cp2k_inputs(cls, structure, cell, code,
                           mgrid_cutoff, vdw_switch):
 
         inputs = {}
@@ -114,18 +121,16 @@ class STMWorkChain(WorkChain):
 
         inputs['file']['geom_coords'] = geom_f
         
-        atoms_z_extent = np.max(atoms.positions[:, 2]) - np.min(atoms.positions[:, 2])
-        if atoms.cell[2, 2] < atoms_z_extent+30.0:
-            atoms.cell[2, 2] += atoms_z_extent+30.0
+        cell_array = cell.get_array('cell')
 
         # parameters
-        cell_abc = "%f  %f  %f" % (atoms.cell[0, 0],
-                                   atoms.cell[1, 1],
-                                   atoms.cell[2, 2])
-
-        #num_machines = int(np.round(1. + len(atoms)/120.))
+        cell_abc = "%f  %f  %f" % (cell_array[0],
+                                   cell_array[1],
+                                   cell_array[2])
         num_machines = 12
-        walltime = 3600
+        if len(atoms) > 500:
+            num_machines = 27
+        walltime = 7200
 
         inp = cls.get_cp2k_input(cell_abc,
                                  mgrid_cutoff,

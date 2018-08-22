@@ -45,6 +45,12 @@ class StmimageCalculation(JobCalculation):
                'linkname': 'parent_calc_folder',
                'docstring': "Use a remote folder as parent folder ",
                },
+            "settings": {
+               'valid_types': ParameterData,
+               'additional_parameter': None,
+               'linkname': 'settings',
+               'docstring': "Special settings",
+               },
             })
         return retdict
 
@@ -80,7 +86,15 @@ class StmimageCalculation(JobCalculation):
             raise InputValidationError("No parent_calc_folder specified for this calculation")
         if not isinstance(parent_calc_folder, RemoteData):
             raise InputValidationError("parent_calc_folder is not of type RemoteData")
-            
+        
+        try:
+            settings = inputdict.pop(self.get_linkname('settings'))
+        except KeyError:
+            raise InputValidationError("No settings specified for this calculation")
+        if not isinstance(settings, ParameterData):
+            raise InputValidationError("settings is not of type ParameterData")
+        settings_dict = settings.get_dict()
+        
         # Here, there should be no more parameters...
         if inputdict:
             raise InputValidationError("The following input data nodes are "
@@ -115,7 +129,8 @@ class StmimageCalculation(JobCalculation):
         calcinfo.remote_symlink_list = []
         calcinfo.local_copy_list = []
         calcinfo.remote_copy_list = []
-        calcinfo.retrieve_list = []
+        print(settings_dict)
+        calcinfo.retrieve_list = settings_dict.pop('additional_retrieve_list', [])
 
         # symlinks
         if parent_calc_folder is not None:
