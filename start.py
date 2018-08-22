@@ -11,6 +11,7 @@ def get_start_widget(appbase, jupbase):
     <td valign="top"><ul>
     <li><a href="{appbase}/setup_codes.ipynb" target="_blank">Setup codes</a>
     <li><a href="{appbase}/submit_stm.ipynb" target="_blank">Submit STM</a>
+    <li><a href="{appbase}/view_stm.ipynb" target="_blank">View STM</a>
     </ul></td>
     </tr>
 """
