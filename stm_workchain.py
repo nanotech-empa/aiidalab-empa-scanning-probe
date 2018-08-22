@@ -3,6 +3,7 @@ from aiida.orm.data.parameter import ParameterData
 from aiida.orm.data.array import ArrayData
 from aiida.orm.data.base import Int, Float, Str, Bool
 from aiida.orm.data.singlefile import SinglefileData
+from aiida.orm.data.remote import RemoteData
 from aiida.orm.code import Code
 
 from aiida.work.workchain import WorkChain, ToContext, Calc, while_
@@ -13,6 +14,7 @@ from aiida_cp2k.calculations import Cp2kCalculation
 from evalmorbs import EvalmorbsCalculation
 from stmimage import StmimageCalculation
 
+import os
 import tempfile
 import shutil
 import numpy as np
@@ -26,8 +28,9 @@ class STMWorkChain(WorkChain):
         spec.input("cp2k_code", valid_type=Code)
         spec.input("structure", valid_type=StructureData)
         spec.input("cell", valid_type=ArrayData)
-        spec.input("vdw_switch", valid_type=Bool, default=Bool(False))
         spec.input("mgrid_cutoff", valid_type=Int, default=Int(600))
+        spec.input("wfn_file_path", valid_type=Str, default=Str(""))
+        
         
         spec.input("eval_orbs_code", valid_type=Code)
         spec.input("eval_orbs_params", valid_type=ParameterData)
@@ -38,7 +41,7 @@ class STMWorkChain(WorkChain):
         spec.outline(
             cls.run_scf_diag,
             cls.eval_orbs_on_grid,
-            cls.make_stm_images
+            cls.make_stm_images,
         )
         
         spec.dynamic_output()
@@ -50,7 +53,7 @@ class STMWorkChain(WorkChain):
                                         self.inputs.cell,
                                         self.inputs.cp2k_code,
                                         self.inputs.mgrid_cutoff,
-                                        self.inputs.vdw_switch)
+                                        self.inputs.wfn_file_path)
 
         self.report("inputs: "+str(inputs))
         future = submit(Cp2kCalculation.process(), **inputs)
@@ -102,7 +105,7 @@ class STMWorkChain(WorkChain):
      # ==========================================================================
     @classmethod
     def build_cp2k_inputs(cls, structure, cell, code,
-                          mgrid_cutoff, vdw_switch):
+                          mgrid_cutoff, wfn_file_path):
 
         inputs = {}
         inputs['_label'] = "scf_diag"
@@ -130,12 +133,16 @@ class STMWorkChain(WorkChain):
         num_machines = 12
         if len(atoms) > 500:
             num_machines = 27
-        walltime = 7200
+        walltime = 21600
+        
+        wfn_file = ""
+        if wfn_file_path != "":
+            wfn_file = os.path.basename(wfn_file_path.value)
 
         inp = cls.get_cp2k_input(cell_abc,
                                  mgrid_cutoff,
-                                 vdw_switch,
-                                 walltime*0.97)
+                                 walltime*0.97,
+                                 wfn_file)
 
         inputs['parameters'] = ParameterData(dict=inp)
 
@@ -149,12 +156,14 @@ class STMWorkChain(WorkChain):
             "max_wallclock_seconds": walltime,
             "append_text": ur"cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
         }
+        if wfn_file_path != "":
+            inputs['_options']["prepend_text"] = ur"cp %s ." % wfn_file_path
         
         return inputs
 
     # ==========================================================================
     @classmethod
-    def get_cp2k_input(cls, cell_abc, mgrid_cutoff, vdw_switch, walltime):
+    def get_cp2k_input(cls, cell_abc, mgrid_cutoff, walltime, wfn_file):
 
         inp = {
             'GLOBAL': {
@@ -163,15 +172,14 @@ class STMWorkChain(WorkChain):
                 'PRINT_LEVEL': 'LOW'
             },
             'FORCE_EVAL': cls.get_force_eval_qs_dft(cell_abc,
-                                                    mgrid_cutoff,
-                                                    vdw_switch),
+                                                    mgrid_cutoff, wfn_file),
         }
 
         return inp
 
     # ==========================================================================
     @classmethod
-    def get_force_eval_qs_dft(cls, cell_abc, mgrid_cutoff, vdw_switch):
+    def get_force_eval_qs_dft(cls, cell_abc, mgrid_cutoff, wfn_file):
         force_eval = {
             'METHOD': 'Quickstep',
             'DFT': {
@@ -242,18 +250,10 @@ class STMWorkChain(WorkChain):
                 'KIND': [],
             }
         }
-
-        if vdw_switch is True:
-            force_eval['DFT']['XC']['VDW_POTENTIAL'] = {
-                'DISPERSION_FUNCTIONAL': 'PAIR_POTENTIAL',
-                'PAIR_POTENTIAL': {
-                    'TYPE': 'DFTD3',
-                    'CALCULATE_C9_TERM': '.TRUE.',
-                    'PARAMETER_FILE_NAME': 'dftd3.dat',
-                    'REFERENCE_FUNCTIONAL': 'PBE',
-                    'R_CUTOFF': '15',
-                }
-            }
+        
+        if wfn_file != "":
+            force_eval['DFT']['RESTART_FILE_NAME'] = "./%s"%wfn_file
+            force_eval['DFT']['SCF']['SCF_GUESS'] = 'RESTART'
 
         force_eval['SUBSYS']['KIND'].append({
             '_': 'Au',
