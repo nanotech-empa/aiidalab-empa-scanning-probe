@@ -133,7 +133,7 @@ class STMWorkChain(WorkChain):
         num_machines = 12
         if len(atoms) > 500:
             num_machines = 27
-        walltime = 21600
+        walltime = 72000
         
         wfn_file = ""
         if wfn_file_path != "":
