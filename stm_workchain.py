@@ -30,6 +30,7 @@ class STMWorkChain(WorkChain):
         spec.input("cell", valid_type=ArrayData)
         spec.input("mgrid_cutoff", valid_type=Int, default=Int(600))
         spec.input("wfn_file_path", valid_type=Str, default=Str(""))
+        spec.input("elpa_switch", valid_type=Bool, default=Bool(True))
         
         
         spec.input("eval_orbs_code", valid_type=Code)
@@ -53,7 +54,8 @@ class STMWorkChain(WorkChain):
                                         self.inputs.cell,
                                         self.inputs.cp2k_code,
                                         self.inputs.mgrid_cutoff,
-                                        self.inputs.wfn_file_path)
+                                        self.inputs.wfn_file_path,
+                                        self.inputs.elpa_switch)
 
         self.report("inputs: "+str(inputs))
         future = submit(Cp2kCalculation.process(), **inputs)
@@ -105,7 +107,7 @@ class STMWorkChain(WorkChain):
      # ==========================================================================
     @classmethod
     def build_cp2k_inputs(cls, structure, cell, code,
-                          mgrid_cutoff, wfn_file_path):
+                          mgrid_cutoff, wfn_file_path, elpa_switch):
 
         inputs = {}
         inputs['_label'] = "scf_diag"
@@ -142,7 +144,8 @@ class STMWorkChain(WorkChain):
         inp = cls.get_cp2k_input(cell_abc,
                                  mgrid_cutoff,
                                  walltime*0.97,
-                                 wfn_file)
+                                 wfn_file,
+                                 elpa_switch)
 
         inputs['parameters'] = ParameterData(dict=inp)
 
@@ -163,17 +166,23 @@ class STMWorkChain(WorkChain):
 
     # ==========================================================================
     @classmethod
-    def get_cp2k_input(cls, cell_abc, mgrid_cutoff, walltime, wfn_file):
+    def get_cp2k_input(cls, cell_abc, mgrid_cutoff, walltime, wfn_file, elpa_switch):
 
         inp = {
             'GLOBAL': {
                 'RUN_TYPE': 'ENERGY',
                 'WALLTIME': '%d' % walltime,
-                'PRINT_LEVEL': 'LOW'
+                'PRINT_LEVEL': 'LOW',
+                'EXTENDED_FFT_LENGTHS': ''
             },
             'FORCE_EVAL': cls.get_force_eval_qs_dft(cell_abc,
                                                     mgrid_cutoff, wfn_file),
         }
+        
+        if elpa_switch:
+            inp['GLOBAL']['PREFERRED_DIAG_LIBRARY'] = 'ELPA'
+            inp['GLOBAL']['ELPA_KERNEL'] = 'AUTO'
+            inp['GLOBAL']['DBCSR'] = {'USE_MPI_ALLOCATOR': '.FALSE.'}
 
         return inp
 
@@ -199,7 +208,7 @@ class STMWorkChain(WorkChain):
                     'MAX_SCF': '1000',
                     'SCF_GUESS': 'ATOMIC',
                     'EPS_SCF': '1.0E-7',
-                    'ADDED_MOS': '100',
+                    'ADDED_MOS': '800',
                     'CHOLESKY': 'INVERSE',
                     'DIAGONALIZATION': {
                         '_': '',
@@ -257,6 +266,16 @@ class STMWorkChain(WorkChain):
 
         force_eval['SUBSYS']['KIND'].append({
             '_': 'Au',
+            'BASIS_SET': 'DZVP-MOLOPT-SR-GTH',
+            'POTENTIAL': 'GTH-PBE-q11'
+        })
+        force_eval['SUBSYS']['KIND'].append({
+            '_': 'Ag',
+            'BASIS_SET': 'DZVP-MOLOPT-SR-GTH',
+            'POTENTIAL': 'GTH-PBE-q11'
+        })
+        force_eval['SUBSYS']['KIND'].append({
+            '_': 'Cu',
             'BASIS_SET': 'DZVP-MOLOPT-SR-GTH',
             'POTENTIAL': 'GTH-PBE-q11'
         })
