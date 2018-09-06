@@ -111,10 +111,11 @@ class StmimageCalculation(JobCalculation):
         cmdline = []
         for key in parameters.dict:
             cmdline += [key]
-            if isinstance(parameters.dict[key], list):
-                cmdline += parameters.dict[key]
-            else:
-                cmdline += [parameters.dict[key]]
+            if parameters.dict[key] != '':
+                if isinstance(parameters.dict[key], list):
+                    cmdline += parameters.dict[key]
+                else:
+                    cmdline += [parameters.dict[key]]
         
         codeinfo.cmdline_params = cmdline
         codeinfo.withmpi = False
