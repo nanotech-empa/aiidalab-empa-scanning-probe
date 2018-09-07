@@ -6,6 +6,7 @@
         "aiida.calculations": [
             "stm.eval_morbs = evalmorbs:EvalmorbsCalculation",
             "stm.stm_image = stmimage:StmimageCalculation"
+            "stm.pdos = pdos:PdosCalculation"
         ]
     }
 }
