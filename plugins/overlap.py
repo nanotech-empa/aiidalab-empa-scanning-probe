@@ -9,16 +9,14 @@ from aiida.common.datastructures import CalcInfo, CodeInfo
 from aiida.common.exceptions import InputValidationError
 
 
-class PdosCalculation(JobCalculation):
+class OverlapCalculation(JobCalculation):
 
     # --------------------------------------------------------------------------
     def _init_internal_params(self):
         """
         Set parameters of instance
         """
-        super(PdosCalculation, self)._init_internal_params()
-        
-        self._PARENT_CALC_FOLDER_NAME = 'parent_calc/'
+        super(OverlapCalculation, self)._init_internal_params()
 
     # --------------------------------------------------------------------------
     @classproperty
@@ -36,11 +34,17 @@ class PdosCalculation(JobCalculation):
                'docstring': "The node that specifies the "
                             "input parameters",
                },
-            "parent_calc_folder": {
+            "parent_slab_folder": {
                'valid_types': RemoteData,
                'additional_parameter': None,
-               'linkname': 'parent_calc_folder',
-               'docstring': "Use a remote folder as parent folder ",
+               'linkname': 'parent_slab_folder',
+               'docstring': "remote folder containing slab_eval results",
+               },
+            "parent_mol_folder": {
+               'valid_types': RemoteData,
+               'additional_parameter': None,
+               'linkname': 'parent_mol_folder',
+               'docstring': "remote folder containing mol_eval results ",
                },
             "settings": {
                'valid_types': ParameterData,
@@ -78,11 +82,17 @@ class PdosCalculation(JobCalculation):
             raise InputValidationError("parameters is not of type ParameterData")
         
         try:
-            parent_calc_folder = inputdict.pop(self.get_linkname('parent_calc_folder'))
+            parent_slab_folder = inputdict.pop(self.get_linkname('parent_slab_folder'))
         except KeyError:
-            raise InputValidationError("No parent_calc_folder specified for this calculation")
-        if not isinstance(parent_calc_folder, RemoteData):
-            raise InputValidationError("parent_calc_folder is not of type RemoteData")
+            raise InputValidationError("No parent_slab_folder specified for this calculation")
+        if not isinstance(parent_slab_folder, RemoteData):
+            raise InputValidationError("parent_slab_folder is not of type RemoteData")
+        try:
+            parent_mol_folder = inputdict.pop(self.get_linkname('parent_mol_folder'))
+        except KeyError:
+            raise InputValidationError("No parent_mol_folder specified for this calculation")
+        if not isinstance(parent_mol_folder, RemoteData):
+            raise InputValidationError("parent_mol_folder is not of type RemoteData")
         
         try:
             settings = inputdict.pop(self.get_linkname('settings'))
@@ -99,7 +109,6 @@ class PdosCalculation(JobCalculation):
         
         ###  End of input check
         ### ------------------------------------------------------
-        
         
         # create code info
         codeinfo = CodeInfo()
@@ -131,13 +140,17 @@ class PdosCalculation(JobCalculation):
         calcinfo.retrieve_list = settings_dict.pop('additional_retrieve_list', [])
 
         # symlinks
-        if parent_calc_folder is not None:
-            comp_uuid = parent_calc_folder.get_computer().uuid
-            remote_path = parent_calc_folder.get_remote_path()
-            symlink = (comp_uuid, remote_path, self._PARENT_CALC_FOLDER_NAME)
+        if parent_slab_folder is not None:
+            comp_uuid = parent_slab_folder.get_computer().uuid
+            remote_path = parent_slab_folder.get_remote_path()
+            symlink = (comp_uuid, remote_path, "parent_slab_folder")
             calcinfo.remote_symlink_list.append(symlink)
-
-
+        if parent_mol_folder is not None:
+            comp_uuid = parent_mol_folder.get_computer().uuid
+            remote_path = parent_mol_folder.get_remote_path()
+            symlink = (comp_uuid, remote_path, "parent_mol_folder")
+            calcinfo.remote_symlink_list.append(symlink)
+        
         return calcinfo
 
 # EOF

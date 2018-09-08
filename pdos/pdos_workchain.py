@@ -11,7 +11,9 @@ from aiida.work.run import submit
 
 from aiida_cp2k.calculations import Cp2kCalculation
 
-from pdos import PdosCalculation
+from evalmorbs import EvalmorbsCalculation
+from overlap import OverlapCalculation
+
 
 import os
 import tempfile
@@ -27,16 +29,17 @@ class PdosWorkChain(WorkChain):
         spec.input("cp2k_code", valid_type=Code)
         spec.input("slabsys_structure", valid_type=StructureData)
         spec.input("mol_structure", valid_type=StructureData)
-        spec.input("mol_indexes", valid_type=ArrayData)
+        spec.input("first_slab_ind", valid_type=Int)
         spec.input("mgrid_cutoff", valid_type=Int, default=Int(600))
         spec.input("wfn_file_path", valid_type=Str, default=Str(""))
         spec.input("elpa_switch", valid_type=Bool, default=Bool(True))
         
         spec.input("eval_orbs_code", valid_type=Code)
-        spec.input("eval_orbs_params", valid_type=ParameterData)
+        spec.input("eval_slab_params", valid_type=ParameterData)
+        spec.input("eval_mol_params", valid_type=ParameterData)
         
-        spec.input("pdos_code", valid_type=Code)
-        spec.input("pdos_params", valid_type=ParameterData)
+        spec.input("overlap_code", valid_type=Code)
+        spec.input("overlap_params", valid_type=ParameterData)
         
         spec.outline(
             cls.run_scfs,
@@ -50,8 +53,8 @@ class PdosWorkChain(WorkChain):
         self.report("Running CP2K diagonalization SCF")
 
         slab_inputs = self.build_slab_cp2k_inputs(
-                        self.inputs.structure,
-                        self.inputs.mol_indexes,
+                        self.inputs.slabsys_structure,
+                        self.inputs.first_slab_ind,
                         self.inputs.cp2k_code,
                         self.inputs.mgrid_cutoff,
                         self.inputs.wfn_file_path,
@@ -62,10 +65,9 @@ class PdosWorkChain(WorkChain):
         self.to_context(slab_scf=Calc(slab_future))
         
         mol_inputs = self.build_mol_cp2k_inputs(
-                        self.inputs.structure,
+                        self.inputs.mol_structure,
                         self.inputs.cp2k_code,
                         self.inputs.mgrid_cutoff,
-                        self.inputs.wfn_file_path,
                         self.inputs.elpa_switch)
         self.report("mol_inputs: "+str(mol_inputs))
         
@@ -75,49 +77,59 @@ class PdosWorkChain(WorkChain):
     def run_grid_evals(self):
         self.report("Evaluating Kohn-Sham orbitals on grid")
         
-        inputs = {}
-        inputs['_label'] = "eval_morbs"
-        inputs['code'] = self.inputs.eval_orbs_code
-        inputs['parameters'] = self.inputs.eval_orbs_params
-        inputs['parent_calc_folder'] = self.ctx.scf_diag.out.remote_folder
-        inputs['_options'] = {
+        eval_slab_inputs = {}
+        eval_slab_inputs['_label'] = "eval_slab"
+        eval_slab_inputs['code'] = self.inputs.eval_orbs_code
+        eval_slab_inputs['parameters'] = self.inputs.eval_slab_params
+        eval_slab_inputs['parent_calc_folder'] = self.ctx.slab_scf.out.remote_folder
+        eval_slab_inputs['_options'] = {
             "resources": {"num_machines": 2, "num_mpiprocs_per_machine": 6},
             "max_wallclock_seconds": 7200,
         }
+        self.report("Eval slab inputs: " + str(eval_slab_inputs))
+        eval_slab_future = submit(EvalmorbsCalculation.process(), **eval_slab_inputs)
+        self.to_context(eval_slab=Calc(eval_slab_future))
         
-        self.report("Inputs: " + str(inputs))
-        
-        future = submit(EvalmorbsCalculation.process(), **inputs)
-        return ToContext(eval_morbs=future)
-        
+        eval_mol_inputs = {}
+        eval_mol_inputs['_label'] = "eval_mol"
+        eval_mol_inputs['code'] = self.inputs.eval_orbs_code
+        eval_mol_inputs['parameters'] = self.inputs.eval_mol_params
+        eval_mol_inputs['parent_calc_folder'] = self.ctx.mol_scf.out.remote_folder
+        eval_mol_inputs['_options'] = {
+            "resources": {"num_machines": 2, "num_mpiprocs_per_machine": 6},
+            "max_wallclock_seconds": 7200,
+        }
+        self.report("Eval mol inputs: " + str(eval_mol_inputs))
+        eval_mol_future = submit(EvalmorbsCalculation.process(), **eval_mol_inputs)
+        self.to_context(eval_mol=Calc(eval_mol_future))
         
            
-    def make_stm_images(self):
-        self.report("Extrapolating wavefunctions and making STM/STS images")
+    def run_overlap(self):
+        self.report("Running overlap")
              
         inputs = {}
-        inputs['_label'] = "stm_images"
-        inputs['code'] = self.inputs.stm_image_code
-        inputs['parameters'] = self.inputs.stm_image_params
-        inputs['parent_calc_folder'] = self.ctx.eval_morbs.out.remote_folder
+        inputs['_label'] = "overlap"
+        inputs['code'] = self.inputs.overlap_code
+        inputs['parameters'] = self.inputs.overlap_params
+        inputs['parent_slab_folder'] = self.ctx.eval_slab.out.remote_folder
+        inputs['parent_mol_folder'] = self.ctx.eval_mol.out.remote_folder
         inputs['_options'] = {
             "resources": {"num_machines": 1},
-            "max_wallclock_seconds": 1600,
+            "max_wallclock_seconds": 3600,
         } 
         
-        # Need to make an explicit instance for the node to be stored to aiida
-        settings = ParameterData(dict={'additional_retrieve_list': ['stm_output/*.npz']})
+        settings = ParameterData(dict={'additional_retrieve_list': ['overlap.npz']})
         inputs['settings'] = settings
         
-        self.report("Inputs: " + str(inputs))
+        self.report("overlap inputs: " + str(inputs))
         
-        future = submit(StmimageCalculation.process(), **inputs)
-        return ToContext(stm_image=future)
+        future = submit(OverlapCalculation.process(), **inputs)
+        return ToContext(overlap=future)
     
     
      # ==========================================================================
     @classmethod
-    def build_slab_cp2k_inputs(cls, structure, mol_indexes, code,
+    def build_slab_cp2k_inputs(cls, structure, first_slab_ind, code,
                           mgrid_cutoff, wfn_file_path, elpa_switch):
 
         inputs = {}
@@ -153,13 +165,14 @@ class PdosWorkChain(WorkChain):
                                  mgrid_cutoff,
                                  walltime*0.97,
                                  wfn_file,
-                                 elpa_switch)
+                                 elpa_switch,
+                                 first_slab_ind-1)
 
         inputs['parameters'] = ParameterData(dict=inp)
 
         # settings
-        #settings = ParameterData(dict={'additional_retrieve_list': ['aiida-RESTART.wfn', 'BASIS_MOLOPT', 'aiida.inp']})
-        #inputs['settings'] = settings
+        settings = ParameterData(dict={'additional_retrieve_list': ['*.pdos']})
+        inputs['settings'] = settings
 
         # resources
         inputs['_options'] = {
@@ -177,7 +190,7 @@ class PdosWorkChain(WorkChain):
                           mgrid_cutoff, elpa_switch):
 
         inputs = {}
-        inputs['_label'] = "slab_scf"
+        inputs['_label'] = "mol_scf"
         inputs['code'] = code
         inputs['file'] = {}
         
@@ -196,19 +209,15 @@ class PdosWorkChain(WorkChain):
         cell_abc = "%f  %f  %f" % (atoms.cell[0, 0],
                                    atoms.cell[1, 1],
                                    atoms.cell[2, 2])
-        num_machines = 27
-        if len(atoms) > 1500:
-            num_machines = 48
+        num_machines = 3
+        if len(atoms) > 300:
+            num_machines = 12
         walltime = 72000
-        
-        wfn_file = ""
-        if wfn_file_path != "":
-            wfn_file = os.path.basename(wfn_file_path.value)
 
         inp = cls.get_cp2k_input(cell_abc,
                                  mgrid_cutoff,
                                  walltime*0.97,
-                                 wfn_file,
+                                 "",
                                  elpa_switch)
 
         inputs['parameters'] = ParameterData(dict=inp)
@@ -222,14 +231,12 @@ class PdosWorkChain(WorkChain):
             "resources": {"num_machines": num_machines},
             "max_wallclock_seconds": walltime,
         }
-        if wfn_file_path != "":
-            inputs['_options']["prepend_text"] = ur"cp %s ." % wfn_file_path
         
         return inputs
 
     # ==========================================================================
     @classmethod
-    def get_cp2k_input(cls, cell_abc, mgrid_cutoff, walltime, wfn_file, elpa_switch):
+    def get_cp2k_input(cls, cell_abc, mgrid_cutoff, walltime, wfn_file, elpa_switch, pdos_index=None):
 
         inp = {
             'GLOBAL': {
@@ -239,7 +246,7 @@ class PdosWorkChain(WorkChain):
                 'EXTENDED_FFT_LENGTHS': ''
             },
             'FORCE_EVAL': cls.get_force_eval_qs_dft(cell_abc,
-                                                    mgrid_cutoff, wfn_file),
+                                                    mgrid_cutoff, wfn_file, pdos_index),
         }
         
         if elpa_switch:
@@ -251,7 +258,7 @@ class PdosWorkChain(WorkChain):
 
     # ==========================================================================
     @classmethod
-    def get_force_eval_qs_dft(cls, cell_abc, mgrid_cutoff, wfn_file, pdos=None):
+    def get_force_eval_qs_dft(cls, cell_abc, mgrid_cutoff, wfn_file, pdos_index=None):
         force_eval = {
             'METHOD': 'Quickstep',
             'DFT': {
@@ -316,8 +323,7 @@ class PdosWorkChain(WorkChain):
                 'CELL': {'ABC': cell_abc},
                 'TOPOLOGY': {
                     'COORD_FILE_NAME': 'geom.xyz',
-                    'COORDINATE': 'xyz',
-                    'CENTER_COORDINATES': {'_': ''},
+                    'COORDINATE': 'xyz'
                 },
                 'KIND': [],
             }
@@ -327,12 +333,12 @@ class PdosWorkChain(WorkChain):
             force_eval['DFT']['RESTART_FILE_NAME'] = "./%s"%wfn_file
             force_eval['DFT']['SCF']['SCF_GUESS'] = 'RESTART'
             
-        if pdos != None:
+        if pdos_index != None:
             force_eval['DFT']['PRINT']['PDOS'] = {
                 'NLUMO': '-1',
                 'LDOS': {
                     'COMPONENTS': '',
-                    
+                    'LIST': "1..%d" % pdos_index
                 }
             }
 
