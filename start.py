@@ -5,15 +5,30 @@ def get_start_widget(appbase, jupbase):
     template = """
     <table>
     <tr>
+        <th style="text-align:center">General</th>
+        <th style="width:70px" rowspan=2></th>
         <th style="text-align:center">STM</th>
+        <th style="width:70px" rowspan=2></th>
+        <th style="text-align:center">PDOS</th>
+        <th style="width:70px" rowspan=2></th>
+        <th style="text-align:center">AFM</th>
     </tr>
+    
     <tr>
-    <td valign="top"><ul>
-    <li><a href="{appbase}/setup_codes.ipynb" target="_blank">Setup codes</a>
-    <li><a href="{appbase}/submit_stm.ipynb" target="_blank">Submit STM</a>
-    <li><a href="{appbase}/view_stm.ipynb" target="_blank">View STM</a>
-    </ul></td>
+        <td valign="top"><ul>
+            <li><a href="{appbase}/setup_codes.ipynb" target="_blank">Setup codes</a>
+        </ul></td>
+        
+        <td valign="top"><ul>
+            <li><a href="{appbase}/submit_stm.ipynb" target="_blank">Submit STM</a>
+            <li><a href="{appbase}/view_stm.ipynb" target="_blank">View STM</a>
+        </ul></td>
+
+        <td valign="top"><ul>
+            <li><a href="{appbase}/pdos/submit_pdos.ipynb" target="_blank">Submit PDOS</a>
+        </ul></td>
     </tr>
+    </table>
 """
     
     html = template.format(appbase=appbase, jupbase=jupbase)
