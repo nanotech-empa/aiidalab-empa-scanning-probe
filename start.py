@@ -26,6 +26,11 @@ def get_start_widget(appbase, jupbase):
 
         <td valign="top"><ul>
             <li><a href="{appbase}/pdos/submit_pdos.ipynb" target="_blank">Submit PDOS</a>
+            <li><a href="{appbase}/pdos/view_pdos.ipynb" target="_blank">View PDOS</a>
+        </ul></td>
+        
+        <td valign="top"><ul>
+            <li><a href="{appbase}/afm/submit_afm.ipynb" target="_blank">Submit AFM</a>
         </ul></td>
     </tr>
     </table>

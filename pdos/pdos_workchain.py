@@ -114,7 +114,7 @@ class PdosWorkChain(WorkChain):
         inputs['parent_slab_folder'] = self.ctx.eval_slab.out.remote_folder
         inputs['parent_mol_folder'] = self.ctx.eval_mol.out.remote_folder
         inputs['_options'] = {
-            "resources": {"num_machines": 1},
+            "resources": {"num_machines": 1, "num_mpiprocs_per_machine": 1},
             "max_wallclock_seconds": 3600,
         } 
         
@@ -178,6 +178,7 @@ class PdosWorkChain(WorkChain):
         inputs['_options'] = {
             "resources": {"num_machines": num_machines},
             "max_wallclock_seconds": walltime,
+            "append_text": ur"cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
         }
         if wfn_file_path != "":
             inputs['_options']["prepend_text"] = ur"cp %s ." % wfn_file_path
@@ -230,6 +231,7 @@ class PdosWorkChain(WorkChain):
         inputs['_options'] = {
             "resources": {"num_machines": num_machines},
             "max_wallclock_seconds": walltime,
+            "append_text": ur"cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
         }
         
         return inputs
