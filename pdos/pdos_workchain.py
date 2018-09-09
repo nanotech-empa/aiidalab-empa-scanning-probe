@@ -210,8 +210,8 @@ class PdosWorkChain(WorkChain):
         cell_abc = "%f  %f  %f" % (atoms.cell[0, 0],
                                    atoms.cell[1, 1],
                                    atoms.cell[2, 2])
-        num_machines = 3
-        if len(atoms) > 300:
+        num_machines = 6
+        if len(atoms) > 150:
             num_machines = 12
         walltime = 72000
 
