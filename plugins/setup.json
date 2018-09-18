@@ -6,7 +6,8 @@
         "aiida.calculations": [
             "spm.eval_morbs = evalmorbs:EvalmorbsCalculation",
             "spm.stm_image = stmimage:StmimageCalculation",
-            "spm.overlap = overlap:OverlapCalculation"
+            "spm.overlap = overlap:OverlapCalculation",
+            "spm.afm = afm:AfmCalculation"
         ]
     }
 }
