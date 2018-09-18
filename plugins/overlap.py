@@ -136,7 +136,7 @@ class OverlapCalculation(JobCalculation):
         calcinfo.remote_symlink_list = []
         calcinfo.local_copy_list = []
         calcinfo.remote_copy_list = []
-        print(settings_dict)
+
         calcinfo.retrieve_list = settings_dict.pop('additional_retrieve_list', [])
 
         # symlinks
