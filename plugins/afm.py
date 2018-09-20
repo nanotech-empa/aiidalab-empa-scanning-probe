@@ -89,7 +89,7 @@ class AfmCalculation(JobCalculation):
         calcinfo.remote_symlink_list = []
         calcinfo.local_copy_list = [(atomtypes_file.get_file_abs_path(), 'atomtypes.ini')]
         calcinfo.remote_copy_list = []
-        calcinfo.retrieve_list = ["*/*/df.xsf"]
+        calcinfo.retrieve_list = ["*/*/*.npy"]
 
         # symlinks
         if parent_calc_folder is not None:
