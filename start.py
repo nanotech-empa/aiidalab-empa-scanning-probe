@@ -31,6 +31,7 @@ def get_start_widget(appbase, jupbase):
         
         <td valign="top"><ul>
             <li><a href="{appbase}/afm/submit_afm.ipynb" target="_blank">Submit AFM</a>
+            <li><a href="{appbase}/afm/view_afm.ipynb" target="_blank">View AFM</a>
         </ul></td>
     </tr>
     </table>
