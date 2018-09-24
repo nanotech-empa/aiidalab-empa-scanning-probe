@@ -20,8 +20,8 @@ def get_start_widget(appbase, jupbase):
         </ul></td>
         
         <td valign="top"><ul>
-            <li><a href="{appbase}/submit_stm.ipynb" target="_blank">Submit STM</a>
-            <li><a href="{appbase}/view_stm.ipynb" target="_blank">View STM</a>
+            <li><a href="{appbase}/stm/submit_stm.ipynb" target="_blank">Submit STM</a>
+            <li><a href="{appbase}/stm/view_stm.ipynb" target="_blank">View STM</a>
         </ul></td>
 
         <td valign="top"><ul>
