@@ -9,9 +9,9 @@ from aiida.common.datastructures import CalcInfo, CodeInfo
 from aiida.common.exceptions import InputValidationError
 
 
-class StmimageCalculation(JobCalculation):
+class StmCalculation(JobCalculation):
     """
-    This is an StmimageCalculation
+    This is an StmCalculation
     """
 
     # --------------------------------------------------------------------------
@@ -19,9 +19,9 @@ class StmimageCalculation(JobCalculation):
         """
         Set parameters of instance
         """
-        super(StmimageCalculation, self)._init_internal_params()
+        super(StmCalculation, self)._init_internal_params()
         
-        self._PARENT_CALC_FOLDER_NAME = 'parent_calc/'
+        self._PARENT_CALC_FOLDER_NAME = 'parent_calc_folder/'
 
     # --------------------------------------------------------------------------
     @classproperty
@@ -118,7 +118,6 @@ class StmimageCalculation(JobCalculation):
                     cmdline += [parameters.dict[key]]
         
         codeinfo.cmdline_params = cmdline
-        codeinfo.withmpi = False
 
         # create calc info
         calcinfo = CalcInfo()

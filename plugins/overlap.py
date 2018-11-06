@@ -124,7 +124,6 @@ class OverlapCalculation(JobCalculation):
                     cmdline += [parameters.dict[key]]
         
         codeinfo.cmdline_params = cmdline
-        #codeinfo.withmpi = False
 
         # create calc info
         calcinfo = CalcInfo()

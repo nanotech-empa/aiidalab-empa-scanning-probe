@@ -4,8 +4,7 @@
     "reentry_register": true,
     "entry_points": {
         "aiida.calculations": [
-            "spm.eval_morbs = evalmorbs:EvalmorbsCalculation",
-            "spm.stm_image = stmimage:StmimageCalculation",
+            "spm.stm = stm:StmCalculation",
             "spm.overlap = overlap:OverlapCalculation",
             "spm.afm = afm:AfmCalculation"
         ]

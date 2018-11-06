@@ -11,8 +11,7 @@ from aiida.work.run import submit
 
 from aiida_cp2k.calculations import Cp2kCalculation
 
-from evalmorbs import EvalmorbsCalculation
-from stmimage import StmimageCalculation
+from stm import StmCalculation
 
 import os
 import tempfile
@@ -32,17 +31,12 @@ class STMWorkChain(WorkChain):
         spec.input("wfn_file_path", valid_type=Str, default=Str(""))
         spec.input("elpa_switch", valid_type=Bool, default=Bool(True))
         
-        
-        spec.input("eval_orbs_code", valid_type=Code)
-        spec.input("eval_orbs_params", valid_type=ParameterData)
-        
-        spec.input("stm_image_code", valid_type=Code)
-        spec.input("stm_image_params", valid_type=ParameterData)
+        spec.input("stm_code", valid_type=Code)
+        spec.input("stm_params", valid_type=ParameterData)
         
         spec.outline(
             cls.run_scf_diag,
-            cls.eval_orbs_on_grid,
-            cls.make_stm_images,
+            cls.run_stm,
         )
         
         spec.dynamic_output()
@@ -61,47 +55,28 @@ class STMWorkChain(WorkChain):
         future = submit(Cp2kCalculation.process(), **inputs)
         return ToContext(scf_diag=Calc(future))
    
-    def eval_orbs_on_grid(self):
-        self.report("Evaluating Kohn-Sham orbitals on grid")
-        
-        inputs = {}
-        inputs['_label'] = "eval_morbs"
-        inputs['code'] = self.inputs.eval_orbs_code
-        inputs['parameters'] = self.inputs.eval_orbs_params
-        inputs['parent_calc_folder'] = self.ctx.scf_diag.out.remote_folder
-        inputs['_options'] = {
-            "resources": {"num_machines": 2, "num_mpiprocs_per_machine": 6},
-            "max_wallclock_seconds": 7200,
-        }
-        
-        self.report("Inputs: " + str(inputs))
-        
-        future = submit(EvalmorbsCalculation.process(), **inputs)
-        return ToContext(eval_morbs=future)
-        
-        
            
-    def make_stm_images(self):
-        self.report("Extrapolating wavefunctions and making STM/STS images")
+    def run_stm(self):
+        self.report("STM calculation")
              
         inputs = {}
-        inputs['_label'] = "stm_images"
-        inputs['code'] = self.inputs.stm_image_code
-        inputs['parameters'] = self.inputs.stm_image_params
-        inputs['parent_calc_folder'] = self.ctx.eval_morbs.out.remote_folder
+        inputs['_label'] = "stm"
+        inputs['code'] = self.inputs.stm_code
+        inputs['parameters'] = self.inputs.stm_params
+        inputs['parent_calc_folder'] = self.ctx.scf_diag.out.remote_folder
         inputs['_options'] = {
-            "resources": {"num_machines": 1},
-            "max_wallclock_seconds": 1600,
+            "resources": {"num_machines": 4},
+            "max_wallclock_seconds": 10800,
         } 
         
         # Need to make an explicit instance for the node to be stored to aiida
-        settings = ParameterData(dict={'additional_retrieve_list': ['stm_output/*.npz']})
+        settings = ParameterData(dict={'additional_retrieve_list': ['stm.npz']})
         inputs['settings'] = settings
         
         self.report("Inputs: " + str(inputs))
         
-        future = submit(StmimageCalculation.process(), **inputs)
-        return ToContext(stm_image=future)
+        future = submit(StmCalculation.process(), **inputs)
+        return ToContext(stm=future)
     
     
      # ==========================================================================
