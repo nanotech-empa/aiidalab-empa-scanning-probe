@@ -1,4 +1,6 @@
 {
     "description": "Empa nanotech@surfaces Laboratory",
-    "title": "Empa nanotech@surfaces Laboratory - Scanning Probe Microscopy"
+    "title": "Empa nanotech@surfaces Laboratory - Scanning Probe Microscopy",
+    "version": "0.1",
+    "logo": "miscellaneous/logos/empa.png"
 }
