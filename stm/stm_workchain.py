@@ -289,5 +289,15 @@ class STMWorkChain(WorkChain):
             'BASIS_SET': 'TZV2P-MOLOPT-GTH',
             'POTENTIAL': 'GTH-PBE-q1'
         })
+        force_eval['SUBSYS']['KIND'].append({
+            '_': 'Pd',
+            'BASIS_SET': 'DZVP-MOLOPT-SR-GTH',
+            'POTENTIAL': 'GTH-PBE-q18'
+        })
+        force_eval['SUBSYS']['KIND'].append({
+            '_': 'Ga',
+            'BASIS_SET': 'DZVP-MOLOPT-SR-GTH',
+            'POTENTIAL': 'GTH-PBE-q13'
+        })
 
         return force_eval
