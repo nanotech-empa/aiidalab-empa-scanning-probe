@@ -11,7 +11,6 @@ from aiida.work.run import submit
 
 from aiida_cp2k.calculations import Cp2kCalculation
 
-from evalmorbs import EvalmorbsCalculation
 from overlap import OverlapCalculation
 
 
