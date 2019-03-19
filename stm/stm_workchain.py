@@ -65,8 +65,8 @@ class STMWorkChain(WorkChain):
         inputs['parameters'] = self.inputs.stm_params
         inputs['parent_calc_folder'] = self.ctx.scf_diag.out.remote_folder
         inputs['_options'] = {
-            "resources": {"num_machines": 4},
-            "max_wallclock_seconds": 10800,
+            "resources": {"num_machines": 6},
+            "max_wallclock_seconds": 21600,
         } 
         
         # Need to make an explicit instance for the node to be stored to aiida
@@ -91,6 +91,7 @@ class STMWorkChain(WorkChain):
 
         
         atoms = structure.get_ase()  # slow
+        n_atoms = len(atoms)
 
         # structure
         tmpdir = tempfile.mkdtemp()
@@ -108,19 +109,23 @@ class STMWorkChain(WorkChain):
                                    cell_array[1],
                                    cell_array[2])
         num_machines = 12
-        if len(atoms) > 500:
+        if n_atoms > 500:
             num_machines = 27
         walltime = 72000
         
         wfn_file = ""
         if wfn_file_path != "":
             wfn_file = os.path.basename(wfn_file_path.value)
+            
+        emax = self.inputs.stm_params.get_dict()['--emax']
+        added_mos = np.max([100, int(n_atoms*emax/6.0)])
 
         inp = cls.get_cp2k_input(cell_abc,
                                  mgrid_cutoff,
                                  walltime*0.97,
                                  wfn_file,
-                                 elpa_switch)
+                                 elpa_switch,
+                                 added_mos)
 
         inputs['parameters'] = ParameterData(dict=inp)
 
@@ -141,7 +146,7 @@ class STMWorkChain(WorkChain):
 
     # ==========================================================================
     @classmethod
-    def get_cp2k_input(cls, cell_abc, mgrid_cutoff, walltime, wfn_file, elpa_switch):
+    def get_cp2k_input(cls, cell_abc, mgrid_cutoff, walltime, wfn_file, elpa_switch, added_mos):
 
         inp = {
             'GLOBAL': {
@@ -151,7 +156,7 @@ class STMWorkChain(WorkChain):
                 'EXTENDED_FFT_LENGTHS': ''
             },
             'FORCE_EVAL': cls.get_force_eval_qs_dft(cell_abc,
-                                                    mgrid_cutoff, wfn_file),
+                                                    mgrid_cutoff, wfn_file, added_mos),
         }
         
         if elpa_switch:
@@ -163,7 +168,7 @@ class STMWorkChain(WorkChain):
 
     # ==========================================================================
     @classmethod
-    def get_force_eval_qs_dft(cls, cell_abc, mgrid_cutoff, wfn_file):
+    def get_force_eval_qs_dft(cls, cell_abc, mgrid_cutoff, wfn_file, added_mos):
         force_eval = {
             'METHOD': 'Quickstep',
             'DFT': {
@@ -183,7 +188,7 @@ class STMWorkChain(WorkChain):
                     'MAX_SCF': '1000',
                     'SCF_GUESS': 'ATOMIC',
                     'EPS_SCF': '1.0E-7',
-                    'ADDED_MOS': '800',
+                    'ADDED_MOS': str(added_mos),
                     'CHOLESKY': 'INVERSE',
                     'DIAGONALIZATION': {
                         '_': '',
