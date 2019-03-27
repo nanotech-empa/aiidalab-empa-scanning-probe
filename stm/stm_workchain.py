@@ -43,13 +43,16 @@ class STMWorkChain(WorkChain):
     
     def run_scf_diag(self):
         self.report("Running CP2K diagonalization SCF")
+        
+        emax = float(self.inputs.stm_params.get_dict()['--emax'])
 
         inputs = self.build_cp2k_inputs(self.inputs.structure,
                                         self.inputs.cell,
                                         self.inputs.cp2k_code,
                                         self.inputs.mgrid_cutoff,
                                         self.inputs.wfn_file_path,
-                                        self.inputs.elpa_switch)
+                                        self.inputs.elpa_switch,
+                                        emax)
 
         self.report("inputs: "+str(inputs))
         future = submit(Cp2kCalculation.process(), **inputs)
@@ -82,7 +85,7 @@ class STMWorkChain(WorkChain):
      # ==========================================================================
     @classmethod
     def build_cp2k_inputs(cls, structure, cell, code,
-                          mgrid_cutoff, wfn_file_path, elpa_switch):
+                          mgrid_cutoff, wfn_file_path, elpa_switch, emax):
 
         inputs = {}
         inputs['_label'] = "scf_diag"
@@ -117,7 +120,6 @@ class STMWorkChain(WorkChain):
         if wfn_file_path != "":
             wfn_file = os.path.basename(wfn_file_path.value)
             
-        emax = self.inputs.stm_params.get_dict()['--emax']
         added_mos = np.max([100, int(n_atoms*emax/6.0)])
 
         inp = cls.get_cp2k_input(cell_abc,
