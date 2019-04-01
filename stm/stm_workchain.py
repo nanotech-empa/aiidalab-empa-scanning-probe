@@ -11,6 +11,8 @@ from aiida.work.run import submit
 
 from aiida_cp2k.calculations import Cp2kCalculation
 
+from apps.scanning_probe import common
+
 from stm import StmCalculation
 
 import os
@@ -127,7 +129,8 @@ class STMWorkChain(WorkChain):
                                  walltime*0.97,
                                  wfn_file,
                                  elpa_switch,
-                                 added_mos)
+                                 added_mos,
+                                 atoms)
 
         inputs['parameters'] = ParameterData(dict=inp)
 
@@ -148,7 +151,7 @@ class STMWorkChain(WorkChain):
 
     # ==========================================================================
     @classmethod
-    def get_cp2k_input(cls, cell_abc, mgrid_cutoff, walltime, wfn_file, elpa_switch, added_mos):
+    def get_cp2k_input(cls, cell_abc, mgrid_cutoff, walltime, wfn_file, elpa_switch, added_mos, atoms):
 
         inp = {
             'GLOBAL': {
@@ -158,7 +161,7 @@ class STMWorkChain(WorkChain):
                 'EXTENDED_FFT_LENGTHS': ''
             },
             'FORCE_EVAL': cls.get_force_eval_qs_dft(cell_abc,
-                                                    mgrid_cutoff, wfn_file, added_mos),
+                                                    mgrid_cutoff, wfn_file, added_mos, atoms),
         }
         
         if elpa_switch:
@@ -170,7 +173,7 @@ class STMWorkChain(WorkChain):
 
     # ==========================================================================
     @classmethod
-    def get_force_eval_qs_dft(cls, cell_abc, mgrid_cutoff, wfn_file, added_mos):
+    def get_force_eval_qs_dft(cls, cell_abc, mgrid_cutoff, wfn_file, added_mos, atoms):
         force_eval = {
             'METHOD': 'Quickstep',
             'DFT': {
@@ -227,7 +230,7 @@ class STMWorkChain(WorkChain):
                 'PRINT': {
                     'V_HARTREE_CUBE': {
                         'FILENAME': 'HART',
-                        'STRIDE': '4 4 4',
+                        'STRIDE': '2 2 2',
                     },
                 },
             },
@@ -245,66 +248,13 @@ class STMWorkChain(WorkChain):
         if wfn_file != "":
             force_eval['DFT']['RESTART_FILE_NAME'] = "./%s"%wfn_file
             force_eval['DFT']['SCF']['SCF_GUESS'] = 'RESTART'
-
-        force_eval['SUBSYS']['KIND'].append({
-            '_': 'Au',
-            'BASIS_SET': 'DZVP-MOLOPT-SR-GTH',
-            'POTENTIAL': 'GTH-PBE-q11'
-        })
-        force_eval['SUBSYS']['KIND'].append({
-            '_': 'Ag',
-            'BASIS_SET': 'DZVP-MOLOPT-SR-GTH',
-            'POTENTIAL': 'GTH-PBE-q11'
-        })
-        force_eval['SUBSYS']['KIND'].append({
-            '_': 'Cu',
-            'BASIS_SET': 'DZVP-MOLOPT-SR-GTH',
-            'POTENTIAL': 'GTH-PBE-q11'
-        })
-        force_eval['SUBSYS']['KIND'].append({
-            '_': 'C',
-            'BASIS_SET': 'TZV2P-MOLOPT-GTH',
-            'POTENTIAL': 'GTH-PBE-q4'
-        })
-        force_eval['SUBSYS']['KIND'].append({
-            '_': 'Br',
-            'BASIS_SET': 'DZVP-MOLOPT-SR-GTH',
-            'POTENTIAL': 'GTH-PBE-q7'
-        })
-        force_eval['SUBSYS']['KIND'].append({
-            '_': 'B',
-            'BASIS_SET': 'DZVP-MOLOPT-SR-GTH',
-            'POTENTIAL': 'GTH-PBE-q3'
-        })        
-        force_eval['SUBSYS']['KIND'].append({
-            '_': 'O',
-            'BASIS_SET': 'TZV2P-MOLOPT-GTH',
-            'POTENTIAL': 'GTH-PBE-q6'
-        })
-        force_eval['SUBSYS']['KIND'].append({
-            '_': 'S',
-            'BASIS_SET': 'TZV2P-MOLOPT-GTH',
-            'POTENTIAL': 'GTH-PBE-q6'
-        })
-        force_eval['SUBSYS']['KIND'].append({
-            '_': 'N',
-            'BASIS_SET': 'TZV2P-MOLOPT-GTH',
-            'POTENTIAL': 'GTH-PBE-q5'
-        })
-        force_eval['SUBSYS']['KIND'].append({
-            '_': 'H',
-            'BASIS_SET': 'TZV2P-MOLOPT-GTH',
-            'POTENTIAL': 'GTH-PBE-q1'
-        })
-        force_eval['SUBSYS']['KIND'].append({
-            '_': 'Pd',
-            'BASIS_SET': 'DZVP-MOLOPT-SR-GTH',
-            'POTENTIAL': 'GTH-PBE-q18'
-        })
-        force_eval['SUBSYS']['KIND'].append({
-            '_': 'Ga',
-            'BASIS_SET': 'DZVP-MOLOPT-SR-GTH',
-            'POTENTIAL': 'GTH-PBE-q13'
-        })
+        
+        used_kinds = np.unique(atoms.get_chemical_symbols())
+        for symbol in used_kinds:
+            force_eval['SUBSYS']['KIND'].append({
+                '_': symbol,
+                'BASIS_SET': common.ATOMIC_KIND_INFO[symbol]['basis'],
+                'POTENTIAL': common.ATOMIC_KIND_INFO[symbol]['pseudo'],
+            })
 
         return force_eval
