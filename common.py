@@ -9,23 +9,25 @@ path_to_stm0_viewer = "scanning_probe/stm/view_stm-old.ipynb"
 path_to_pdos_viewer = "scanning_probe/pdos/view_pdos.ipynb"
 path_to_afm_viewer = "scanning_probe/afm/view_afm.ipynb"
 
+path_to_orb_viewer = "scanning_probe/orb/view_orb.ipynb"
+
 ### ----------------------------------------------------------------
 ### BS & PP
 
 ATOMIC_KIND_INFO = {
-    'H' :{'basis' : 'TZV2P-MOLOPT-GTH'  , 'pseudo' : 'GTH-PBE-q1' }
-    'Au':{'basis' : 'DZVP-MOLOPT-SR-GTH', 'pseudo' : 'GTH-PBE-q11'}
-    'Ag':{'basis' : 'DZVP-MOLOPT-SR-GTH', 'pseudo' : 'GTH-PBE-q11'}
-    'Cu':{'basis' : 'DZVP-MOLOPT-SR-GTH', 'pseudo' : 'GTH-PBE-q11'}
-    'Al':{'basis' : 'DZVP-MOLOPT-SR-GTH', 'pseudo' : 'GTH-PBE-q3' }
-    'B' :{'basis' : 'TZV2P-MOLOPT-GTH'  , 'pseudo' : 'GTH-PBE-q1' }
-    'Br':{'basis' : 'DZVP-MOLOPT-SR-GTH', 'pseudo' : 'GTH-PBE-q7' }
-    'C' :{'basis' : 'TZV2P-MOLOPT-GTH'  , 'pseudo' : 'GTH-PBE-q4' }
-    'Ga':{'basis' : 'DZVP-MOLOPT-SR-GTH', 'pseudo' : 'GTH-PBE-q13'}
-    'N' :{'basis' : 'TZV2P-MOLOPT-GTH'  , 'pseudo' : 'GTH-PBE-q5' }
-    'O' :{'basis' : 'TZV2P-MOLOPT-GTH'  , 'pseudo' : 'GTH-PBE-q6' }
-    'Pd':{'basis' : 'DZVP-MOLOPT-SR-GTH', 'pseudo' : 'GTH-PBE-q18'}
-    'S' :{'basis' : 'TZV2P-MOLOPT-GTH'  , 'pseudo' : 'GTH-PBE-q6' }
+    'H' :{'basis' : 'TZV2P-MOLOPT-GTH'  , 'pseudo' : 'GTH-PBE-q1' },
+    'Au':{'basis' : 'DZVP-MOLOPT-SR-GTH', 'pseudo' : 'GTH-PBE-q11'},
+    'Ag':{'basis' : 'DZVP-MOLOPT-SR-GTH', 'pseudo' : 'GTH-PBE-q11'},
+    'Cu':{'basis' : 'DZVP-MOLOPT-SR-GTH', 'pseudo' : 'GTH-PBE-q11'},
+    'Al':{'basis' : 'DZVP-MOLOPT-SR-GTH', 'pseudo' : 'GTH-PBE-q3' },
+    'B' :{'basis' : 'TZV2P-MOLOPT-GTH'  , 'pseudo' : 'GTH-PBE-q1' },
+    'Br':{'basis' : 'DZVP-MOLOPT-SR-GTH', 'pseudo' : 'GTH-PBE-q7' },
+    'C' :{'basis' : 'TZV2P-MOLOPT-GTH'  , 'pseudo' : 'GTH-PBE-q4' },
+    'Ga':{'basis' : 'DZVP-MOLOPT-SR-GTH', 'pseudo' : 'GTH-PBE-q13'},
+    'N' :{'basis' : 'TZV2P-MOLOPT-GTH'  , 'pseudo' : 'GTH-PBE-q5' },
+    'O' :{'basis' : 'TZV2P-MOLOPT-GTH'  , 'pseudo' : 'GTH-PBE-q6' },
+    'Pd':{'basis' : 'DZVP-MOLOPT-SR-GTH', 'pseudo' : 'GTH-PBE-q18'},
+    'S' :{'basis' : 'TZV2P-MOLOPT-GTH'  , 'pseudo' : 'GTH-PBE-q6' },
 }
 
 ### ----------------------------------------------------------------
@@ -174,7 +176,7 @@ def preprocess_one_afm(workcalc):
             break
     structure.set_extra('afm_%d_pk'%nr, workcalc.pk)
 ### ----------------------------------------------------------------
-
+### Misc
 
 def get_calc_by_label(workcalc, label):
     qb = QueryBuilder()
