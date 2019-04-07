@@ -4,13 +4,10 @@ from aiida.orm.querybuilder import QueryBuilder
 from aiida.orm.calculation.work import WorkCalculation
 from aiida.orm.calculation.job import JobCalculation
 
-path_to_stm_viewer = "scanning_probe/stm/view_stm.ipynb"
-path_to_stm0_viewer = "scanning_probe/stm/view_stm-old.ipynb"
-path_to_pdos_viewer = "scanning_probe/pdos/view_pdos.ipynb"
-path_to_afm_viewer = "scanning_probe/afm/view_afm.ipynb"
+from collections import OrderedDict 
 
-path_to_orb_viewer = "scanning_probe/orb/view_orb.ipynb"
-
+### ----------------------------------------------------------------
+### ----------------------------------------------------------------
 ### ----------------------------------------------------------------
 ### BS & PP
 
@@ -31,14 +28,106 @@ ATOMIC_KIND_INFO = {
 }
 
 ### ----------------------------------------------------------------
-### Preprocessing
+### ----------------------------------------------------------------
+### ----------------------------------------------------------------
+### Preprocessing and viewer links
 
-PREPROCESS_VERSION = 0.89
+workchain_preproc_and_viewer_info = {
+    'STMWorkChain': OrderedDict([
+        ('stm', { # If no preprocess matches, error wrt first version is given
+            'n_calls': 2,
+            'viewer_path': "/scanning_probe/stm/view_stm.ipynb",
+            'retrieved_files': [(1, ["stm.npz"])], # [(step_index, list_of_retr_files), ...]
+        }),
+        ('stm0', {
+            'n_calls': 3,
+            'viewer_path': "/scanning_probe/stm/view_stm-old.ipynb",
+            'retrieved_files': [(2, ["stm_ch.npz"])],
+        })
+    ]),
+    'PdosWorkChain': OrderedDict([
+        ('pdos', {
+            'n_calls': 3,
+            'viewer_path': "/scanning_probe/pdos/view_pdos.ipynb",
+            'retrieved_files': [(0, ["aiida-list1-1.pdos"]), (2, ["overlap.npz"])],
+        }),
+    ]),
+    'AfmWorkChain': OrderedDict([
+        ('afm', {
+            'n_calls': 3,
+            'viewer_path': "/scanning_probe/afm/view_afm.ipynb",
+            'retrieved_files': [(1, ["df.npy"]), (2, ["df.npy"])],
+        }),
+    ]),
+    'OrbWorkChain': OrderedDict([
+        ('orb', {
+            'n_calls': 2,
+            'viewer_path': "/scanning_probe/orb/view_orb.ipynb",
+            'retrieved_files': [(1, ["orb.npz"])],
+        }),
+    ]),
+}
 
-def preprocess_spm_calcs():
+PREPROCESS_VERSION = 0.93
+
+def preprocess_one(workcalc):
+    """
+    Preprocess one SPM calc
+    Supports preprocess of multiple versions
+    """
+    
+    workcalc_name = workcalc.get_attrs()['_process_label']
+    version_preproc_dict = workchain_preproc_and_viewer_info[workcalc_name]
+    
+    prefix = None
+    reason = None
+    for prefix_version in version_preproc_dict:
+        n_calls = version_preproc_dict[prefix_version]['n_calls']
+        retr_list_per_step = version_preproc_dict[prefix_version]['retrieved_files']
+        
+        success = True
+        
+        if len(workcalc.get_outputs()) < n_calls:
+            if reason is None:
+                reason = "Not all calculations started."
+            success = False
+            break
+        
+        for rlps in retr_list_per_step:
+            calc_step, retr_list = rlps
+            calc = workcalc.get_outputs()[calc_step]
+            retrieved_files = calc.out.retrieved.get_folder_list()
+            if not all(f in retrieved_files for f in retr_list):
+                if reason is None:
+                    reason = "Not all files were retrieved."
+                success = False
+                break
+        if success:
+            prefix = prefix_version
+            break
+            
+    if prefix is None:
+        raise(Exception(reason))
+    
+    structure = workcalc.inp.structure
+    pk_numbers = [e for e in structure.get_extras() if e.startswith(prefix)]
+    pk_numbers = [int(e.split('_')[1]) for e in pk_numbers if e.split('_')[1].isdigit()]
+    pks = [e[1] for e in structure.get_extras().items() if e[0].startswith(prefix)]
+    if workcalc.pk in pks:
+        return
+    nr = 1
+    if len(pk_numbers) != 0:
+        for nr in range(1, 100):
+            if nr in pk_numbers:
+                continue
+            break
+    structure.set_extra('%s_%d_pk'% (prefix, nr), workcalc.pk)
+    
+
+def preprocess_spm_calcs(workchain_list = ['STMWorkChain', 'PdosWorkChain', 'AfmWorkChain']):
     qb = QueryBuilder()
     qb.append(WorkCalculation, filters={
-        'attributes._process_label': {'in': ['STMWorkChain', 'PdosWorkChain', 'AfmWorkChain']},
+        'attributes._process_label': {'in': workchain_list},
         'or':[
                {'extras': {'!has_key': 'preprocess_version'}},
                {'extras.preprocess_version': {'<': PREPROCESS_VERSION}},
@@ -63,21 +152,16 @@ def preprocess_spm_calcs():
             n.set_extra('obsolete', False)
         if n.get_extra('obsolete'):
             continue
-            
+        
+        wc_name = n.get_attrs()['_process_label']
+        
         try:
             if not all([calc.get_state() == 'FINISHED' for calc in n.get_outputs()]):
                 raise(Exception("Not all calculations are 'FINISHED'"))
             
-            if n.get_attrs()['_process_label'] == 'STMWorkChain':
-                preprocess_one_stm(n)
-                print("Preprocessed PK %d (STM)"%n.pk)
-            elif n.get_attrs()['_process_label'] == 'PdosWorkChain':
-                preprocess_one_pdos(n)
-                print("Preprocessed PK %d (PDOS)"%n.pk)
-            elif n.get_attrs()['_process_label'] == 'AfmWorkChain':
-                preprocess_one_afm(n)
-                print("Preprocessed PK %d (AFM)"%n.pk)
-                
+            preprocess_one(n)
+            print("Preprocessed PK %d (%s)"%(n.pk, wc_name))
+            
             n.set_extra('preprocess_successful', True)
             n.set_extra('preprocess_version', PREPROCESS_VERSION)
             
@@ -88,93 +172,25 @@ def preprocess_spm_calcs():
             n.set_extra('preprocess_successful', False)
             n.set_extra('preprocess_error', str(e))
             n.set_extra('preprocess_version', PREPROCESS_VERSION)
-            print("Failed to preprocess PK %d: %s"%(n.pk, e))
+            print("Failed to preprocess PK %d (%s): %s"%(n.pk, wc_name, e))
 
-def preprocess_one_stm(workcalc):
+def create_viewer_link_html(structure_extras):
+    calc_links_str = ""
+    for key in sorted(structure_extras.keys()):
+        for wc_version_dict in workchain_preproc_and_viewer_info.values():
+            for prefix in wc_version_dict.keys():
+                if key.split('_')[0] == prefix:
+                    nr = key.split('_')[1]
+                    pk = structure_extras[key]
+                    link_name = ''.join([i for i in prefix if not i.isdigit()])
+                    link_name = link_name.upper()
+                    calc_links_str += "<a target='_blank' href='%s?pk=%s'>%s %s</a><br />" % (
+                        "../.."+wc_version_dict[prefix]['viewer_path'], pk, link_name, nr)
+    return calc_links_str
     
-    if len(workcalc.get_outputs()) < 2:
-        raise(Exception("stm never started."))
-        
-    stm_calc = workcalc.get_outputs()[-1]
     
-    retrieved_files = stm_calc.out.retrieved.get_folder_list()
-    if "stm.npz" not in retrieved_files and "stm_ch.npz" not in retrieved_files:
-         raise(Exception("stm.npz or stm_ch.npz was not retrieved"))
-    
-    structure = workcalc.inp.structure
-    stm_numbers = [e for e in structure.get_extras() if e.startswith('stm')]
-    stm_numbers = [int(e.split('_')[1]) for e in stm_numbers if e.split('_')[1].isdigit()]
-    stm_pks = [e[1] for e in structure.get_extras().items() if e[0].startswith('stm')]
-    if workcalc.pk in stm_pks:
-        return
-    stm_nr = 1
-    if len(stm_numbers) != 0:
-        for stm_nr in range(1, 100):
-            if stm_nr in stm_numbers:
-                continue
-            break
-    if "stm_ch.npz" in retrieved_files:
-        # Old version
-        structure.set_extra('stm0_%d_pk'%stm_nr, workcalc.pk)
-    else:
-        structure.set_extra('stm_%d_pk'%stm_nr, workcalc.pk)
-        
-    
-def preprocess_one_pdos(workcalc):
-    
-    if len(workcalc.get_outputs()) < 3:
-        raise(Exception("overlap never started."))
-    
-    slab_scf = workcalc.get_outputs()[0]
-    overlap = workcalc.get_outputs()[-1]
-    
-    if "aiida-list1-1.pdos" not in slab_scf.out.retrieved.get_folder_list():
-         raise(Exception("aiida-list1-1.pdos was not retrieved!"))
-            
-    if "overlap.npz" not in overlap.out.retrieved.get_folder_list():
-         raise(Exception("overlap.npz was not retrieved!"))
-    
-    structure = workcalc.inp.slabsys_structure
-    pdos_numbers = [e for e in structure.get_extras() if e.startswith('pdos')]
-    pdos_numbers = [int(e.split('_')[1]) for e in pdos_numbers if e.split('_')[1].isdigit()]
-    pdos_pks = [e[1] for e in structure.get_extras().items() if e[0].startswith('pdos')]
-    if workcalc.pk in pdos_pks:
-        return
-    nr = 1
-    if len(pdos_numbers) != 0:
-        for nr in range(1, 100):
-            if nr in pdos_numbers:
-                continue
-            break
-    structure.set_extra('pdos_%d_pk'%nr, workcalc.pk)
-    
-def preprocess_one_afm(workcalc):
-    
-    if len(workcalc.get_outputs()) < 3:
-        raise(Exception("afm never started."))
-    
-    afm_pp = workcalc.get_outputs()[1]
-    afm_2pp = workcalc.get_outputs()[2]
-    
-    if "df.npy" not in afm_pp.out.retrieved.get_folder_list():
-         raise(Exception("df.npy was not retrieved!"))
-            
-    if "df.npy" not in afm_2pp.out.retrieved.get_folder_list():
-         raise(Exception("df.npy was not retrieved!"))
-            
-    structure = workcalc.inp.structure
-    afm_numbers = [e for e in structure.get_extras() if e.startswith('afm')]
-    afm_numbers = [int(e.split('_')[1]) for e in afm_numbers if e.split('_')[1].isdigit()]
-    afm_pks = [e[1] for e in structure.get_extras().items() if e[0].startswith('afm')]
-    if workcalc.pk in afm_pks:
-        return
-    nr = 1
-    if len(afm_numbers) != 0:
-        for nr in range(1, 100):
-            if nr in afm_numbers:
-                continue
-            break
-    structure.set_extra('afm_%d_pk'%nr, workcalc.pk)
+### ----------------------------------------------------------------
+### ----------------------------------------------------------------
 ### ----------------------------------------------------------------
 ### Misc
 
