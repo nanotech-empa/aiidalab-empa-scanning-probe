@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/136625855.svg)](https://zenodo.org/badge/latestdoi/136625855)
+
 ## Materials Cloud AiiDA Lab Tools for Scanning Probe Microscopy simulations
 
 This repository contains AiiDA workflows and Jupyter (Materials Cloud) GUI for running scanning probe microscopy simulations.
