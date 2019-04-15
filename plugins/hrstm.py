@@ -40,12 +40,12 @@ class HrstmCalculation(JobCalculation):
                'linkname': 'parent_calc_folder',
                'docstring': "Use a remote folder as parent folder ",
                },
-            "settings": {
-               'valid_types': ParameterData,
-               'additional_parameter': None,
-               'linkname': 'settings',
-               'docstring': "Special settings",
-               },
+#            "settings": {
+#               'valid_types': ParameterData,
+#               'additional_parameter': None,
+#               'linkname': 'settings',
+#               'docstring': "Special settings",
+#               },
             })
         return retdict
 

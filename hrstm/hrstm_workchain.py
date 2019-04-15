@@ -98,8 +98,8 @@ class HRSTMWorkChain(WorkChain):
             "max_wallclock_seconds": 43200, # 12:00 hours
         }
         # Need to make an explicit instance for the node to be stored to aiida
-        settings = ParameterData(dict={'additional_retrieve_list': ['hrstm.npz']})
-        inputs['settings'] = settings
+#        settings = ParameterData(dict={'additional_retrieve_list': ['hrstm.npz']})
+#        inputs['settings'] = settings
 
         self.report("HR-STM Inputs: " + str(inputs))
 
