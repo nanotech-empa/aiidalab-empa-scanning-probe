@@ -13,5 +13,6 @@ echo "gridN $NX $NY $NZ" >> params.ini
 
 python $DIR/generateLJFF.py -i $DFT_DIR/geom.xyz --data_format npy
 python $DIR/generateElFF.py -i $HARTREE --data_format npy
-python $DIR/relaxed_scan.py --data_format npy
+#python $DIR/relaxed_scan.py --data_format npy
+python $DIR/relaxed_scan.py --data_format npy --disp --pos
 python $DIR/plot_results.py --df --cbar --save_df --data_format npy
