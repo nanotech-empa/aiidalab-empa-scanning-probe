@@ -111,6 +111,8 @@ class OrbitalWorkChain(WorkChain):
                                    dft_params['cell'][1],
                                    dft_params['cell'][2])
         num_machines = 3
+        if n_atoms > 50:
+            num_machines = 6
         if n_atoms > 100:
             num_machines = 12
         walltime = 72000
