@@ -37,7 +37,7 @@ class HRSTMWorkChain(WorkChain):
         spec.input("ppm_params", valid_type=ParameterData)
 
         spec.input("hrstm_code", valid_type=Code)
-        spec.input("hrstm_params", valid_type=ParameterData)
+#        spec.input("hrstm_params", valid_type=ParameterData)
 
         spec.outline(
             cls.run_scf_diag,
@@ -110,16 +110,14 @@ class HRSTMWorkChain(WorkChain):
     # ==========================================================================
     @classmethod
     def build_cp2k_inputs(cls, structure, cell, code,
-                          mgrid_cutoff, wfn_file_path, elpa_switch, emax):
+                          mgrid_cutoff, wfn_file_path, elpa_switch):
 
         inputs = {}
         inputs['_label'] = "scf_diag"
         inputs['code'] = code
         inputs['file'] = {}
 
-
         atoms = structure.get_ase()  # slow
-        n_atoms = len(atoms)
 
         # structure
         tmpdir = tempfile.mkdtemp()
@@ -129,7 +127,7 @@ class HRSTMWorkChain(WorkChain):
         shutil.rmtree(tmpdir)
 
         inputs['file']['geom_coords'] = geom_f
-
+        
         cell_array = cell.get_array('cell')
 
         # parameters
@@ -137,22 +135,19 @@ class HRSTMWorkChain(WorkChain):
                                    cell_array[1],
                                    cell_array[2])
         num_machines = 12
-        if n_atoms > 500:
+        if len(atoms) > 500:
             num_machines = 27
         walltime = 72000
-
+        
         wfn_file = ""
         if wfn_file_path != "":
             wfn_file = os.path.basename(wfn_file_path.value)
-
-        added_mos = np.max([100, int(n_atoms*emax/6.0)])
 
         inp = cls.get_cp2k_input(cell_abc,
                                  mgrid_cutoff,
                                  walltime*0.97,
                                  wfn_file,
                                  elpa_switch,
-                                 added_mos,
                                  atoms)
 
         inputs['parameters'] = ParameterData(dict=inp)
@@ -169,12 +164,12 @@ class HRSTMWorkChain(WorkChain):
         }
         if wfn_file_path != "":
             inputs['_options']["prepend_text"] = ur"cp %s ." % wfn_file_path
-
+        
         return inputs
 
     # ==========================================================================
     @classmethod
-    def get_cp2k_input(cls, cell_abc, mgrid_cutoff, walltime, wfn_file, elpa_switch, added_mos, atoms):
+    def get_cp2k_input(cls, cell_abc, mgrid_cutoff, walltime, wfn_file, elpa_switch, atoms):
 
         inp = {
             'GLOBAL': {
@@ -184,9 +179,9 @@ class HRSTMWorkChain(WorkChain):
                 'EXTENDED_FFT_LENGTHS': ''
             },
             'FORCE_EVAL': cls.get_force_eval_qs_dft(cell_abc,
-                                                    mgrid_cutoff, wfn_file, added_mos, atoms),
+                                                    mgrid_cutoff, wfn_file, atoms),
         }
-
+        
         if elpa_switch:
             inp['GLOBAL']['PREFERRED_DIAG_LIBRARY'] = 'ELPA'
             inp['GLOBAL']['ELPA_KERNEL'] = 'AUTO'
@@ -196,7 +191,7 @@ class HRSTMWorkChain(WorkChain):
 
     # ==========================================================================
     @classmethod
-    def get_force_eval_qs_dft(cls, cell_abc, mgrid_cutoff, wfn_file, added_mos, atoms):
+    def get_force_eval_qs_dft(cls, cell_abc, mgrid_cutoff, wfn_file, atoms):
         force_eval = {
             'METHOD': 'Quickstep',
             'DFT': {
@@ -216,7 +211,7 @@ class HRSTMWorkChain(WorkChain):
                     'MAX_SCF': '1000',
                     'SCF_GUESS': 'ATOMIC',
                     'EPS_SCF': '1.0E-7',
-                    'ADDED_MOS': str(added_mos),
+                    'ADDED_MOS': '800',
                     'CHOLESKY': 'INVERSE',
                     'DIAGONALIZATION': {
                         '_': '',
@@ -261,13 +256,12 @@ class HRSTMWorkChain(WorkChain):
                 'CELL': {'ABC': cell_abc},
                 'TOPOLOGY': {
                     'COORD_FILE_NAME': 'geom.xyz',
-                    'COORDINATE': 'xyz',
-                    'CENTER_COORDINATES': {'_': ''},
+                    'COORDINATE': 'xyz'
                 },
                 'KIND': [],
             }
         }
-
+        
         if wfn_file != "":
             force_eval['DFT']['RESTART_FILE_NAME'] = "./%s"%wfn_file
             force_eval['DFT']['SCF']['SCF_GUESS'] = 'RESTART'
