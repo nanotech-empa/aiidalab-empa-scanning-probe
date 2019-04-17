@@ -37,7 +37,7 @@ class HRSTMWorkChain(WorkChain):
         spec.input("ppm_params", valid_type=ParameterData)
 
         spec.input("hrstm_code", valid_type=Code)
-#        spec.input("hrstm_params", valid_type=ParameterData)
+        spec.input("hrstm_params", valid_type=ParameterData)
 
         spec.outline(
             cls.run_scf_diag,
