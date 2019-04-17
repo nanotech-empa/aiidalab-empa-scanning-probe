@@ -95,9 +95,13 @@ class OrbitalWorkChain(WorkChain):
         
         atoms = structure.get_ase()  # slow
         n_atoms = len(atoms)
+        
+        spin_guess = None
+        if dft_params['uks']:
+            spin_guess = [dft_params['spin_up_guess'], dft_params['spin_dw_guess']]
 
         geom_f = cls.make_geom_file(
-            atoms, "geom.xyz", [dft_params['spin_up_guess'], dft_params['spin_dw_guess']]
+            atoms, "geom.xyz", spin_guess
         )
 
         inputs['file']['geom_coords'] = geom_f
@@ -146,6 +150,7 @@ class OrbitalWorkChain(WorkChain):
     # ==========================================================================
     @classmethod
     def make_geom_file(cls, atoms, filename, spin_guess=None):
+        # spin_guess = [[spin_up_indexes], [spin_down_indexes]]
         tmpdir = tempfile.mkdtemp()
         file_path = tmpdir + "/" + filename
 
