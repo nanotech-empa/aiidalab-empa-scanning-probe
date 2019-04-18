@@ -40,6 +40,12 @@ class HrstmCalculation(JobCalculation):
                'linkname': 'parent_calc_folder',
                'docstring': "Use a remote folder as parent folder ",
                },
+            "ppm_cal_folder": {
+               'valid_types': RemoteData,
+               'additional_parameter': None,
+               'linkname': 'ppm_calc_folder',
+               'docstring': "Use a remote folder as ppm folder ",
+              },
 #            "settings": {
 #               'valid_types': ParameterData,
 #               'additional_parameter': None,
@@ -82,6 +88,13 @@ class HrstmCalculation(JobCalculation):
             raise InputValidationError("parent_calc_folder is not of type RemoteData")
 
         try:
+            ppm_calc_folder = inputdict.pop(self.get_linkname('ppm_calc_folder'))
+        except KeyError:
+            raise InputValidationError("No ppm_calc_folder specified for this calculation")
+        if not isinstance(ppm_calc_folder, RemoteData):
+            raise InputValidationError("ppm_calc_folder is not of type RemoteData")
+
+        try:
             settings = inputdict.pop(self.get_linkname('settings'))
         except KeyError:
             raise InputValidationError("No settings specified for this calculation")
@@ -110,11 +123,6 @@ class HrstmCalculation(JobCalculation):
 
         calcinfo.retrieve_list = settings_dict.pop('additional_retrieve_list', [])
 
-
-        # create code info
-        codeinfo = CodeInfo()
-        codeinfo.code_uuid = code.uuid
-
         cmdline = []
         for key in parameters.dict:
             if key == 'rotate':
@@ -132,6 +140,11 @@ class HrstmCalculation(JobCalculation):
             comp_uuid = parent_calc_folder.get_computer().uuid
             remote_path = parent_calc_folder.get_remote_path()
             symlink = (comp_uuid, remote_path, self._PARENT_CALC_FOLDER_NAME)
+            calcinfo.remote_symlink_list.append(symlink)
+        if ppm_cal_folder is not None:
+            comp_uuid = ppm_calc_folder.get_computer().uuid
+            remote_path = ppm_calc_folder.get_remote_path()
+            symlink = (comp_uuid, remote_path, self._PPM_CALC_FOLDER_NAME)
             calcinfo.remote_symlink_list.append(symlink)
 
 

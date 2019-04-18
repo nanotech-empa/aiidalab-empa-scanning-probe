@@ -81,7 +81,7 @@ class HRSTMWorkChain(WorkChain):
         self.report("PPM inputs: " + str(inputs))
 
         future = submit(AfmCalculation.process(), **inputs)
-        return ToContext(ppm=future)
+        return ToContext(ppm=Calc(future))
 
 
     def run_hrstm(self):
@@ -93,6 +93,7 @@ class HRSTMWorkChain(WorkChain):
         inputs['code'] = self.inputs.hrstm_code
         inputs['parameters'] = self.inputs.hrstm_params
         inputs['parent_calc_folder'] = self.ctx.scf_diag.out.remote_folder
+        inputs['ppm_calc_folder'] = self.ctx.ppm.remote_folder
         inputs['_options'] = {
             "resources": {"num_machines": 6},
             "max_wallclock_seconds": 43200, # 12:00 hours
@@ -104,7 +105,7 @@ class HRSTMWorkChain(WorkChain):
         self.report("HR-STM Inputs: " + str(inputs))
 
         future = submit(HrstmCalculation.process(), **inputs)
-        return ToContext(hrstm=future)
+        return ToContext(hrstm=Calc(future))
 
 
     # ==========================================================================
