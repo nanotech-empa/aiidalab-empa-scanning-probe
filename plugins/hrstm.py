@@ -16,6 +16,7 @@ class HrstmCalculation(JobCalculation):
         """
         Set parameters of instance
         """
+        print("HRSTM: _init_internal_params")
         super(HrstmCalculation, self)._init_internal_params()
 
     # --------------------------------------------------------------------------
@@ -25,6 +26,7 @@ class HrstmCalculation(JobCalculation):
         Extend the parent _use_methods with further keys.
         This will be manually added to the _use_methods in each subclass
         """
+        print("HRSTM: _use_methods")
         retdict = JobCalculation._use_methods
         retdict.update({
             "parameters": {
@@ -46,12 +48,6 @@ class HrstmCalculation(JobCalculation):
                'linkname': 'ppm_calc_folder',
                'docstring': "Use a remote folder as ppm folder ",
               },
-#            "settings": {
-#               'valid_types': ParameterData,
-#               'additional_parameter': None,
-#               'linkname': 'settings',
-#               'docstring': "Special settings",
-#               },
             })
         return retdict
 
@@ -65,20 +61,21 @@ class HrstmCalculation(JobCalculation):
         :param inputdict: a dictionary with the input nodes, as they would
                 be returned by get_inputdata_dict (without the Code!)
         """
+        print("HRSTM: _prepare_for_submission")
 
         ### ------------------------------------------------------
         ###  Input check
+        try:
+            code = inputdict.pop(self.get_linkname('code'))
+        except KeyError:
+            raise InputValidationError("No code specified for this calculation")
+
         try:
             parameters = inputdict.pop(self.get_linkname('parameters'))
         except KeyError:
             raise InputValidationError("No parameters specified for this calculation")
         if not isinstance(parameters, ParameterData):
             raise InputValidationError("parameters is not of type ParameterData")
-
-        try:
-            code = inputdict.pop(self.get_linkname('code'))
-        except KeyError:
-            raise InputValidationError("No code specified for this calculation")
 
         try:
             parent_calc_folder = inputdict.pop(self.get_linkname('parent_calc_folder'))
@@ -93,14 +90,6 @@ class HrstmCalculation(JobCalculation):
             raise InputValidationError("No ppm_calc_folder specified for this calculation")
         if not isinstance(ppm_calc_folder, RemoteData):
             raise InputValidationError("ppm_calc_folder is not of type RemoteData")
-
-        try:
-            settings = inputdict.pop(self.get_linkname('settings'))
-        except KeyError:
-            raise InputValidationError("No settings specified for this calculation")
-        if not isinstance(settings, ParameterData):
-            raise InputValidationError("settings is not of type ParameterData")
-        settings_dict = settings.get_dict()
 
         # Here, there should be no more parameters...
         if inputdict:
@@ -146,7 +135,6 @@ class HrstmCalculation(JobCalculation):
             remote_path = ppm_calc_folder.get_remote_path()
             symlink = (comp_uuid, remote_path, self._PPM_CALC_FOLDER_NAME)
             calcinfo.remote_symlink_list.append(symlink)
-
 
         return calcinfo
 

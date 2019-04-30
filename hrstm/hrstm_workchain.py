@@ -45,6 +45,8 @@ class HRSTMWorkChain(WorkChain):
             cls.run_hrstm,
         )
 
+        print("HRSTM: define")
+
         spec.dynamic_output()
 
     # TODO this is seemingly done everywhere, I don't like copy paste though...
@@ -85,22 +87,19 @@ class HRSTMWorkChain(WorkChain):
 
 
     def run_hrstm(self):
+        print("HRSTM: run_hrstm")
         self.report("Running HR-STM")
 
-        # TODO this should cut the energies to the necessary heights and then store in aiida
         inputs = {}
         inputs['_label'] = "hrstm"
         inputs['code'] = self.inputs.hrstm_code
         inputs['parameters'] = self.inputs.hrstm_params
         inputs['parent_calc_folder'] = self.ctx.scf_diag.out.remote_folder
-        inputs['ppm_calc_folder'] = self.ctx.ppm.remote_folder
+        inputs['ppm_calc_folder'] = self.ctx.ppm.out.remote_folder
         inputs['_options'] = {
             "resources": {"num_machines": 6},
             "max_wallclock_seconds": 43200, # 12:00 hours
         }
-        # Need to make an explicit instance for the node to be stored to aiida
-#        settings = ParameterData(dict={'additional_retrieve_list': ['hrstm.npz']})
-#        inputs['settings'] = settings
 
         self.report("HR-STM Inputs: " + str(inputs))
 
