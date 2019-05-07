@@ -99,6 +99,21 @@ class HrstmCalculation(JobCalculation):
         ###  End of input check
         ### ------------------------------------------------------
 
+        # create code info
+        codeinfo = CodeInfo()
+        codeinfo.code_uuid = code.uuid
+
+        # Input for executable
+        cmdline = []
+        for key in parameters.dict:
+            cmdline += [key]
+            if parameters.dict[key] != '':
+                if isinstance(parameters.dict[key], list):
+                    cmdline += parameters.dict[key]
+                else:
+                    cmdline += [parameters.dict[key]]
+        codeinfo.cmdline_params = cmdline
+
         # create calc info
         calcinfo = CalcInfo()
         calcinfo.uuid = self.uuid
@@ -111,18 +126,6 @@ class HrstmCalculation(JobCalculation):
         calcinfo.remote_copy_list = []
 
         calcinfo.retrieve_list = settings_dict.pop('additional_retrieve_list', [])
-
-        cmdline = []
-        for key in parameters.dict:
-            if key == 'rotate':
-                if parameters.dict[key]:
-                    cmdline += '--rotate'
-            else:
-                cmdline += [key]
-                if parameters.dict[key] != '':
-                    cmdline += parameters.dict[key]
-
-        codeinfo.cmdline_params = cmdline
 
         # symlinks
         if parent_calc_folder is not None:
