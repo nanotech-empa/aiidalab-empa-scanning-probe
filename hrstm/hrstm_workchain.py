@@ -73,6 +73,8 @@ class HRSTMWorkChain(WorkChain):
         inputs['code'] = self.inputs.ppm_code
         inputs['parameters'] = self.inputs.ppm_params
         inputs['parent_calc_folder'] = self.ctx.scf_diag.out.remote_folder
+#        inputs['parent_calc_folder'] = self.inputs.tmp_folder
+#        inputs['parent_calc_folder'] = '/scratch/snx3000/hifabian/aiida_run_daint-s904/d5/73/bdc9-99bb-41dc-86d7-543aba065364/'
         # TODO set atom types properly
         inputs['atomtypes'] = SinglefileData(file="/project/apps/scanning_probe/hrstm/atomtypes_2pp.ini")
         inputs['_options'] = {
@@ -96,6 +98,10 @@ class HRSTMWorkChain(WorkChain):
         inputs['parameters'] = self.inputs.hrstm_params
         inputs['parent_calc_folder'] = self.ctx.scf_diag.out.remote_folder
         inputs['ppm_calc_folder'] = self.ctx.ppm.out.remote_folder
+        # TODO for testing
+#        inputs['parent_calc_folder'] = self.inputs.tmp_folder
+#        inputs['parent_calc_folder'] = '/scratch/snx3000/hifabian/aiida_run_daint-s904/d5/73/bdc9-99bb-41dc-86d7-543aba065364/'
+#        inputs['ppm_calc_folder'] = '/scratch/snx3000/hifabian/aiida_run_daint-s904/d3/59/7bd7-f199-44b9-b102-24bbf253d966'
         inputs['_options'] = {
             "resources": {"num_machines": 6},
             "max_wallclock_seconds": 43200, # 12:00 hours

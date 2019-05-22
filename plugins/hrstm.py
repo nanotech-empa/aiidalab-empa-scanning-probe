@@ -42,7 +42,7 @@ class HrstmCalculation(JobCalculation):
                'linkname': 'parent_calc_folder',
                'docstring': "Use a remote folder as parent folder ",
                },
-            "ppm_cal_folder": {
+            "ppm_calc_folder": {
                'valid_types': RemoteData,
                'additional_parameter': None,
                'linkname': 'ppm_calc_folder',
@@ -62,7 +62,6 @@ class HrstmCalculation(JobCalculation):
                 be returned by get_inputdata_dict (without the Code!)
         """
         print("HRSTM: _prepare_for_submission")
-
         ### ------------------------------------------------------
         ###  Input check
         try:
@@ -125,7 +124,7 @@ class HrstmCalculation(JobCalculation):
         calcinfo.local_copy_list = []
         calcinfo.remote_copy_list = []
 
-        calcinfo.retrieve_list = settings_dict.pop('additional_retrieve_list', [])
+        #calcinfo.retrieve_list = settings_dict.pop('additional_retrieve_list', [])
 
         # symlinks
         if parent_calc_folder is not None:
@@ -133,7 +132,7 @@ class HrstmCalculation(JobCalculation):
             remote_path = parent_calc_folder.get_remote_path()
             symlink = (comp_uuid, remote_path, self._PARENT_CALC_FOLDER_NAME)
             calcinfo.remote_symlink_list.append(symlink)
-        if ppm_cal_folder is not None:
+        if ppm_calc_folder is not None:
             comp_uuid = ppm_calc_folder.get_computer().uuid
             remote_path = ppm_calc_folder.get_remote_path()
             symlink = (comp_uuid, remote_path, self._PPM_CALC_FOLDER_NAME)
