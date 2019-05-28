@@ -16,8 +16,9 @@ class HrstmCalculation(JobCalculation):
         """
         Set parameters of instance
         """
-        print("HRSTM: _init_internal_params")
         super(HrstmCalculation, self)._init_internal_params()
+        self._PARENT_CALC_FOLDER_NAME = 'parent_calc_folder/'
+        self._PPM_CALC_FOLDER_NAME = 'ppm_calc_folder/'
 
     # --------------------------------------------------------------------------
     @classproperty
@@ -26,7 +27,6 @@ class HrstmCalculation(JobCalculation):
         Extend the parent _use_methods with further keys.
         This will be manually added to the _use_methods in each subclass
         """
-        print("HRSTM: _use_methods")
         retdict = JobCalculation._use_methods
         retdict.update({
             "parameters": {
@@ -61,7 +61,6 @@ class HrstmCalculation(JobCalculation):
         :param inputdict: a dictionary with the input nodes, as they would
                 be returned by get_inputdata_dict (without the Code!)
         """
-        print("HRSTM: _prepare_for_submission")
         ### ------------------------------------------------------
         ###  Input check
         try:
