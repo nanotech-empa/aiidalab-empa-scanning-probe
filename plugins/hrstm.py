@@ -122,6 +122,7 @@ class HrstmCalculation(JobCalculation):
         calcinfo.remote_symlink_list = []
         calcinfo.local_copy_list = []
         calcinfo.remote_copy_list = []
+        calcinfo.retrieve_list = ["*.npy", "*.npz"]
 
         #calcinfo.retrieve_list = settings_dict.pop('additional_retrieve_list', [])
 
