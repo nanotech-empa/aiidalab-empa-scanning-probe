@@ -46,7 +46,7 @@ def get_start_widget(appbase, jupbase):
 
         <td valign="top"><ul>
             <li><a href="{appbase}/hrstm/submit_hrstm.ipynb" target="_blank">Submit HR-STM</a>
-            <li><a href="{appbase}/afm/view_afm.ipynb" target="_blank">View TODO</a>
+            <li><a href="{appbase}/hrstm/view_hrstm.ipynb" target="_blank">View HR-STM</a>
         </ul></td>
     </tr>
     </table>
