@@ -36,39 +36,44 @@ workchain_preproc_and_viewer_info = {
     'STMWorkChain': OrderedDict([
         ('stm', { # If no preprocess matches, error wrt first version is given
             'n_calls': 2,
-            'viewer_path': "/scanning_probe/stm/view_stm.ipynb",
+            'viewer_path': "scanning_probe/stm/view_stm.ipynb",
             'retrieved_files': [(1, ["stm.npz"])], # [(step_index, list_of_retr_files), ...]
+            'struct_label': 'structure',
         }),
         ('stm0', {
             'n_calls': 3,
-            'viewer_path': "/scanning_probe/stm/view_stm-old.ipynb",
+            'viewer_path': "scanning_probe/stm/view_stm-old.ipynb",
             'retrieved_files': [(2, ["stm_ch.npz"])],
+            'struct_label': 'structure',
         })
     ]),
     'PdosWorkChain': OrderedDict([
         ('pdos', {
             'n_calls': 3,
-            'viewer_path': "/scanning_probe/pdos/view_pdos.ipynb",
+            'viewer_path': "scanning_probe/pdos/view_pdos.ipynb",
             'retrieved_files': [(0, ["aiida-list1-1.pdos"]), (2, ["overlap.npz"])],
+            'struct_label': 'slabsys_structure',
         }),
     ]),
     'AfmWorkChain': OrderedDict([
         ('afm', {
             'n_calls': 3,
-            'viewer_path': "/scanning_probe/afm/view_afm.ipynb",
+            'viewer_path': "scanning_probe/afm/view_afm.ipynb",
             'retrieved_files': [(1, ["df.npy"]), (2, ["df.npy"])],
+            'struct_label': 'structure',
         }),
     ]),
-    'OrbWorkChain': OrderedDict([
+    'OrbitalWorkChain': OrderedDict([
         ('orb', {
             'n_calls': 2,
-            'viewer_path': "/scanning_probe/orb/view_orb.ipynb",
+            'viewer_path': "scanning_probe/orb/view_orb.ipynb",
             'retrieved_files': [(1, ["orb.npz"])],
+            'struct_label': 'structure',
         }),
     ]),
 }
 
-PREPROCESS_VERSION = 0.93
+PREPROCESS_VERSION = 0.95
 
 def preprocess_one(workcalc):
     """
@@ -109,7 +114,7 @@ def preprocess_one(workcalc):
     if prefix is None:
         raise(Exception(reason))
     
-    structure = workcalc.inp.structure
+    structure = workcalc.get_inputs_dict()[version_preproc_dict[prefix]['struct_label']]
     pk_numbers = [e for e in structure.get_extras() if e.startswith(prefix)]
     pk_numbers = [int(e.split('_')[1]) for e in pk_numbers if e.split('_')[1].isdigit()]
     pks = [e[1] for e in structure.get_extras().items() if e[0].startswith(prefix)]
@@ -174,7 +179,7 @@ def preprocess_spm_calcs(workchain_list = ['STMWorkChain', 'PdosWorkChain', 'Afm
             n.set_extra('preprocess_version', PREPROCESS_VERSION)
             print("Failed to preprocess PK %d (%s): %s"%(n.pk, wc_name, e))
 
-def create_viewer_link_html(structure_extras):
+def create_viewer_link_html(structure_extras, apps_path):
     calc_links_str = ""
     for key in sorted(structure_extras.keys()):
         for wc_version_dict in workchain_preproc_and_viewer_info.values():
@@ -185,7 +190,7 @@ def create_viewer_link_html(structure_extras):
                     link_name = ''.join([i for i in prefix if not i.isdigit()])
                     link_name = link_name.upper()
                     calc_links_str += "<a target='_blank' href='%s?pk=%s'>%s %s</a><br />" % (
-                        "../.."+wc_version_dict[prefix]['viewer_path'], pk, link_name, nr)
+                        apps_path + wc_version_dict[prefix]['viewer_path'], pk, link_name, nr)
     return calc_links_str
     
     
