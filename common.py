@@ -25,6 +25,7 @@ ATOMIC_KIND_INFO = {
     'O' :{'basis' : 'TZV2P-MOLOPT-GTH'  , 'pseudo' : 'GTH-PBE-q6' },
     'Pd':{'basis' : 'DZVP-MOLOPT-SR-GTH', 'pseudo' : 'GTH-PBE-q18'},
     'S' :{'basis' : 'TZV2P-MOLOPT-GTH'  , 'pseudo' : 'GTH-PBE-q6' },
+    'Zn':{'basis' : 'DZVP-MOLOPT-SR-GTH', 'pseudo' : 'GTH-PBE-q12'},
 }
 
 ### ----------------------------------------------------------------
