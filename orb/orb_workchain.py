@@ -47,7 +47,7 @@ class OrbitalWorkChain(WorkChain):
     def run_scf_diag(self):
         self.report("Running CP2K diagonalization SCF")
         
-        n_lumo = int(self.inputs.stm_params.get_dict()['--n_lumo_ch'])
+        n_lumo = int(self.inputs.stm_params.get_dict()['--n_lumo'])
 
         inputs = self.build_cp2k_inputs(self.inputs.structure,
                                         self.inputs.cp2k_code,
