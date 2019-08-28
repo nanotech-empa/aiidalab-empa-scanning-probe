@@ -75,7 +75,7 @@ class HRSTMWorkChain(WorkChain):
         inputs['atomtypes'] = SinglefileData(file="/project/apps/scanning_probe/hrstm/atomtypes_2pp.ini")
         inputs['_options'] = {
             "resources": {"num_machines": 1},
-            "max_wallclock_seconds": 7200,
+            "max_wallclock_seconds": 21600,
         }
 
         self.report("PPM inputs: " + str(inputs))
