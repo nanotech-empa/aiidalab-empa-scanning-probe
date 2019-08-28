@@ -46,7 +46,7 @@ class STMWorkChain(WorkChain):
     def run_scf_diag(self):
         self.report("Running CP2K diagonalization SCF")
         
-        emax = float(self.inputs.stm_params.get_dict()['--emax'])
+        emax = float(self.inputs.stm_params.get_dict()['--energy_range'][1])
 
         inputs = self.build_cp2k_inputs(self.inputs.structure,
                                         self.inputs.cell,

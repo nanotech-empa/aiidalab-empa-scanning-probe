@@ -25,6 +25,7 @@ ATOMIC_KIND_INFO = {
     'O' :{'basis' : 'TZV2P-MOLOPT-GTH'  , 'pseudo' : 'GTH-PBE-q6' },
     'Pd':{'basis' : 'DZVP-MOLOPT-SR-GTH', 'pseudo' : 'GTH-PBE-q18'},
     'S' :{'basis' : 'TZV2P-MOLOPT-GTH'  , 'pseudo' : 'GTH-PBE-q6' },
+    'Zn':{'basis' : 'DZVP-MOLOPT-SR-GTH', 'pseudo' : 'GTH-PBE-q12'},
 }
 
 ### ----------------------------------------------------------------
@@ -34,15 +35,22 @@ ATOMIC_KIND_INFO = {
 
 workchain_preproc_and_viewer_info = {
     'STMWorkChain': OrderedDict([
-        ('stm', { # If no preprocess matches, error wrt first version is given
+        ('stm2', { # If no preprocess matches, error wrt first version is given
             'n_calls': 2,
             'viewer_path': "scanning_probe/stm/view_stm.ipynb",
             'retrieved_files': [(1, ["stm.npz"])], # [(step_index, list_of_retr_files), ...]
             'struct_label': 'structure',
+            'req_param': ('stm_params', '--fwhms'), # required parameterdata input and a key in it
+        }),
+        ('stm1', {
+            'n_calls': 2,
+            'viewer_path': "scanning_probe/stm/view_stm-v1.ipynb",
+            'retrieved_files': [(1, ["stm.npz"])],
+            'struct_label': 'structure',
         }),
         ('stm0', {
             'n_calls': 3,
-            'viewer_path': "scanning_probe/stm/view_stm-old.ipynb",
+            'viewer_path': "scanning_probe/stm/view_stm-v0.ipynb",
             'retrieved_files': [(2, ["stm_ch.npz"])],
             'struct_label': 'structure',
         })
@@ -64,16 +72,23 @@ workchain_preproc_and_viewer_info = {
         }),
     ]),
     'OrbitalWorkChain': OrderedDict([
-        ('orb', {
+        ('orb1', {
             'n_calls': 2,
             'viewer_path': "scanning_probe/orb/view_orb.ipynb",
+            'retrieved_files': [(1, ["orb.npz"])],
+            'struct_label': 'structure',
+            'req_param': ('stm_params', '--orb_fwhms'),
+        }),
+        ('orb0', {
+            'n_calls': 2,
+            'viewer_path': "scanning_probe/orb/view_orb-v0.ipynb",
             'retrieved_files': [(1, ["orb.npz"])],
             'struct_label': 'structure',
         }),
     ]),
 }
 
-PREPROCESS_VERSION = 0.95
+PREPROCESS_VERSION = 1.01
 
 def preprocess_one(workcalc):
     """
@@ -86,18 +101,21 @@ def preprocess_one(workcalc):
     
     prefix = None
     reason = None
+    
     for prefix_version in version_preproc_dict:
         n_calls = version_preproc_dict[prefix_version]['n_calls']
         retr_list_per_step = version_preproc_dict[prefix_version]['retrieved_files']
         
-        success = True
-        
+        # ---
+        # check if number of calls matches
         if len(workcalc.get_outputs()) < n_calls:
             if reason is None:
                 reason = "Not all calculations started."
-            success = False
-            break
+            continue
         
+        # ---
+        # check if all specified files are retrieved
+        success = True
         for rlps in retr_list_per_step:
             calc_step, retr_list = rlps
             calc = workcalc.get_outputs()[calc_step]
@@ -107,17 +125,31 @@ def preprocess_one(workcalc):
                     reason = "Not all files were retrieved."
                 success = False
                 break
-        if success:
-            prefix = prefix_version
-            break
+        if not success:
+            continue
+            
+        # ---
+        # check if the required parameter is there
+        if 'req_param' in version_preproc_dict[prefix_version]:
+            req_param, req_key = version_preproc_dict[prefix_version]['req_param']
+            inp_dict = workcalc.get_inputs_dict()
+            if not (req_param in inp_dict and req_key in inp_dict[req_param].dict):
+                if reason is None:
+                    reason = "Required parameter not existing."
+                continue
+                
+        # ---
+        # found match!    
+        prefix = prefix_version
+        break
             
     if prefix is None:
         raise(Exception(reason))
     
     structure = workcalc.get_inputs_dict()[version_preproc_dict[prefix]['struct_label']]
-    pk_numbers = [e for e in structure.get_extras() if e.startswith(prefix)]
+    pk_numbers = [e for e in structure.get_extras() if e.startswith(prefix[:-1])]
     pk_numbers = [int(e.split('_')[1]) for e in pk_numbers if e.split('_')[1].isdigit()]
-    pks = [e[1] for e in structure.get_extras().items() if e[0].startswith(prefix)]
+    pks = [e[1] for e in structure.get_extras().items() if e[0].startswith(prefix[:-1])]
     if workcalc.pk in pks:
         return
     nr = 1
@@ -138,7 +170,7 @@ def preprocess_spm_calcs(workchain_list = ['STMWorkChain', 'PdosWorkChain', 'Afm
                {'extras.preprocess_version': {'<': PREPROCESS_VERSION}},
            ],
     })
-    qb.order_by({WorkCalculation:{'ctime':'desc'}})
+    qb.order_by({WorkCalculation:{'ctime':'asc'}})
     
     for m in qb.all():
         n = m[0]
