@@ -36,10 +36,23 @@ def get_start_widget(appbase, jupbase):
             <li><a href="{appbase}/pdos/submit_pdos.ipynb" target="_blank">Submit PDOS</a>
             <li><a href="{appbase}/pdos/view_pdos.ipynb" target="_blank">View PDOS</a>
         </ul></td>
-        
+
         <td valign="top"><ul>
             <li><a href="{appbase}/afm/submit_afm.ipynb" target="_blank">Submit AFM</a>
             <li><a href="{appbase}/afm/view_afm.ipynb" target="_blank">View AFM</a>
+        </ul></td>
+    </tr>
+    </table>
+
+    <table>
+    <tr>
+        <th style="text-align:center">HR-STM</th>
+    </tr>
+
+    <tr>
+        <td valign="top"><ul>
+            <li><a href="{appbase}/hrstm/submit_hrstm.ipynb" target="_blank">Submit HR-STM</a>
+            <li><a href="{appbase}/hrstm/view_hrstm.ipynb" target="_blank">View HR-STM</a>
         </ul></td>
     </tr>
     </table>
