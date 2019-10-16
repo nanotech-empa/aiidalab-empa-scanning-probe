@@ -88,7 +88,7 @@ workchain_preproc_and_viewer_info = {
     ]),
 }
 
-PREPROCESS_VERSION = 1.01
+PREPROCESS_VERSION = 1.02
 
 def preprocess_one(workcalc):
     """
