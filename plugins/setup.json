@@ -6,7 +6,8 @@
         "aiida.calculations": [
             "spm.stm = stm:StmCalculation",
             "spm.overlap = overlap:OverlapCalculation",
-            "spm.afm = afm:AfmCalculation"
+            "spm.afm = afm:AfmCalculation",
+            "spm.hrstm = hrstm:HrstmCalculation"
         ]
     }
 }
