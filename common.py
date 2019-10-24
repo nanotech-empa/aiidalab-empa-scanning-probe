@@ -267,3 +267,30 @@ def get_slab_calc_info(workcalc):
     except:
         html = ""
     return html
+
+
+def find_struct_wf(structure, computer, f_exist_func):
+    # check spm
+    extras = structure.get_extras()
+    for ex_k in extras.keys():
+        if ex_k.startswith(('stm', 'pdos', 'afm', 'hrstm')):
+            spm_workchain = load_node(extras[ex_k])
+            cp2k_scf_calc = spm_workchain.get_outputs()[0]
+            if cp2k_scf_calc.get_computer().hostname == computer.hostname:
+                wfn_path = cp2k_scf_calc.out.remote_folder.get_remote_path() + "/aiida-RESTART.wfn"
+                # check if it exists
+                file_exists = f_exist_func(computer.hostname, wfn_path)
+                if file_exists:
+                    print("Found .wfn from %s"%ex_k)
+                    return wfn_path
+    # check geo opt
+    geo_opt_calc = structure.get_inputs()[0]
+    geo_comp = geo_opt_calc.get_computer()
+    if geo_comp.hostname == computer.hostname:
+        wfn_path = geo_opt_calc.out.remote_folder.get_remote_path() + "/aiida-RESTART.wfn"
+        # check if it exists
+        file_exists = f_exist_func(computer.hostname, wfn_path)
+        if file_exists:
+            print("Found .wfn from geo_opt")
+            return wfn_path
+    return ""
