@@ -1,13 +1,13 @@
-from aiida.orm.data.structure import StructureData
-from aiida.orm.data.parameter import ParameterData
-from aiida.orm.data.array import ArrayData
-from aiida.orm.data.base import Int, Float, Str, Bool, List
-from aiida.orm.data.singlefile import SinglefileData
-from aiida.orm.data.remote import RemoteData
-from aiida.orm.code import Code
+from aiida.orm import StructureData
+from aiida.orm import Dict
+from aiida.orm.nodes.data.array import ArrayData
+from aiida.orm import Int, Float, Str, Bool, List
+from aiida.orm import SinglefileData
+from aiida.orm import RemoteData
+from aiida.orm import Code
 
-from aiida.work.workchain import WorkChain, ToContext, Calc, while_
-from aiida.work.run import submit
+from aiida.engine import WorkChain, ToContext, Calc, while_
+from aiida.engine import submit
 
 from aiida_cp2k.calculations import Cp2kCalculation
 
@@ -83,7 +83,7 @@ class PdosWorkChain(WorkChain):
             "max_wallclock_seconds": 10600,
         } 
         
-        settings = ParameterData(dict={'additional_retrieve_list': ['overlap.npz']})
+        settings = Dict(dict={'additional_retrieve_list': ['overlap.npz']})
         inputs['settings'] = settings
         
         self.report("overlap inputs: " + str(inputs))
@@ -134,10 +134,10 @@ class PdosWorkChain(WorkChain):
                                  atoms,
                                  pdos_lists)
 
-        inputs['parameters'] = ParameterData(dict=inp)
+        inputs['parameters'] = Dict(dict=inp)
 
         # settings
-        settings = ParameterData(dict={'additional_retrieve_list': ['*.pdos']})
+        settings = Dict(dict={'additional_retrieve_list': ['*.pdos']})
         inputs['settings'] = settings
 
         # resources
@@ -188,7 +188,7 @@ class PdosWorkChain(WorkChain):
                                  elpa_switch,
                                  atoms)
 
-        inputs['parameters'] = ParameterData(dict=inp)
+        inputs['parameters'] = Dict(dict=inp)
 
         # settings
         #settings = ParameterData(dict={'additional_retrieve_list': ['aiida-RESTART.wfn', 'BASIS_MOLOPT', 'aiida.inp']})

@@ -1,13 +1,13 @@
-from aiida.orm.data.structure import StructureData
-from aiida.orm.data.parameter import ParameterData
-from aiida.orm.data.array import ArrayData
-from aiida.orm.data.base import Int, Float, Str, Bool
-from aiida.orm.data.singlefile import SinglefileData
-from aiida.orm.data.remote import RemoteData
-from aiida.orm.code import Code
+from aiida.orm import StructureData
+from aiida.orm import Dict
+from aiida.orm.nodes.data.array import ArrayData
+from aiida.orm import Int, Float, Str, Bool
+from aiida.orm import SinglefileData
+from aiida.orm import RemoteData
+from aiida.orm import Code
 
-from aiida.work.workchain import WorkChain, ToContext, Calc, while_
-from aiida.work.run import submit
+from aiida.engine import WorkChain, ToContext, Calc, while_
+from aiida.engine import submit
 
 from apps.scanning_probe import common
 
@@ -147,7 +147,7 @@ class HRSTMWorkChain(WorkChain):
                                  elpa_switch,
                                  atoms)
 
-        inputs['parameters'] = ParameterData(dict=inp)
+        inputs['parameters'] = Dict(dict=inp)
 
         # settings
         #settings = ParameterData(dict={'additional_retrieve_list': ['aiida-RESTART.wfn', 'BASIS_MOLOPT', 'aiida.inp']})

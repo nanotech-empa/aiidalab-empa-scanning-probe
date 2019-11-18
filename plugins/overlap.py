@@ -1,15 +1,15 @@
 
-from aiida.orm.calculation.job import JobCalculation
+from aiida.engine import CalcJob
 from aiida.common.utils import classproperty
-from aiida.orm.data.structure import StructureData
-from aiida.orm.data.parameter import ParameterData
-from aiida.orm.data.singlefile import SinglefileData
-from aiida.orm.data.remote import RemoteData
-from aiida.common.datastructures import CalcInfo, CodeInfo
-from aiida.common.exceptions import InputValidationError
+from aiida.orm import StructureData
+from aiida.orm import Dict
+from aiida.orm import SinglefileData
+from aiida.orm import RemoteData
+from aiida.common import CalcInfo, CodeInfo
+from aiida.common import InputValidationError
 
 
-class OverlapCalculation(JobCalculation):
+class OverlapCalculation(CalcJob):
 
     # --------------------------------------------------------------------------
     def _init_internal_params(self):
@@ -56,7 +56,7 @@ class OverlapCalculation(JobCalculation):
         return retdict
 
     # --------------------------------------------------------------------------
-    def _prepare_for_submission(self, tempfolder, inputdict):
+    def prepare_for_submission(self, tempfolder, inputdict):
         """
         This is the routine to be called when you want to create
         the input files and related stuff with a plugin.

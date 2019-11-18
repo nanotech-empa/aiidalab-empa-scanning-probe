@@ -1,13 +1,13 @@
-from aiida.orm.data.structure import StructureData
-from aiida.orm.data.parameter import ParameterData
-from aiida.orm.data.array import ArrayData
-from aiida.orm.data.base import Int, Float, Str, Bool
-from aiida.orm.data.singlefile import SinglefileData
-from aiida.orm.data.remote import RemoteData
-from aiida.orm.code import Code
+from aiida.orm import StructureData
+from aiida.orm import Dict
+from aiida.orm.nodes.data.array import ArrayData
+from aiida.orm import Int, Float, Str, Bool
+from aiida.orm import SinglefileData
+from aiida.orm import RemoteData
+from aiida.orm import Code
 
-from aiida.work.workchain import WorkChain, ToContext, Calc, while_
-from aiida.work.run import submit
+from aiida.engine import WorkChain, ToContext, while_
+#from aiida.engine import submit
 
 from aiida_cp2k.calculations import Cp2kCalculation
 
@@ -34,14 +34,14 @@ class STMWorkChain(WorkChain):
         spec.input("elpa_switch", valid_type=Bool, default=Bool(True))
         
         spec.input("stm_code", valid_type=Code)
-        spec.input("stm_params", valid_type=ParameterData)
+        spec.input("stm_params", valid_type=Dict)
         
         spec.outline(
             cls.run_scf_diag,
             cls.run_stm,
         )
         
-        spec.dynamic_output()
+        spec.outputs.dynamic = True
     
     def run_scf_diag(self):
         self.report("Running CP2K diagonalization SCF")
@@ -57,8 +57,8 @@ class STMWorkChain(WorkChain):
                                         emax)
 
         self.report("inputs: "+str(inputs))
-        future = submit(Cp2kCalculation.process(), **inputs)
-        return ToContext(scf_diag=Calc(future))
+        future = submit(Cp2kCalculation, **inputs)
+        return ToContext(scf_diag=future)
    
            
     def run_stm(self):
@@ -75,12 +75,12 @@ class STMWorkChain(WorkChain):
         } 
         
         # Need to make an explicit instance for the node to be stored to aiida
-        settings = ParameterData(dict={'additional_retrieve_list': ['stm.npz']})
+        settings = Dict(dict={'additional_retrieve_list': ['stm.npz']})
         inputs['settings'] = settings
         
         self.report("Inputs: " + str(inputs))
         
-        future = submit(StmCalculation.process(), **inputs)
+        future = submit(StmCalculation, **inputs)
         return ToContext(stm=future)
     
     
@@ -132,7 +132,7 @@ class STMWorkChain(WorkChain):
                                  added_mos,
                                  atoms)
 
-        inputs['parameters'] = ParameterData(dict=inp)
+        inputs['parameters'] = Dict(dict=inp)
 
         # settings
         #settings = ParameterData(dict={'additional_retrieve_list': ['aiida-RESTART.wfn', 'BASIS_MOLOPT', 'aiida.inp']})
@@ -142,10 +142,10 @@ class STMWorkChain(WorkChain):
         inputs['_options'] = {
             "resources": {"num_machines": num_machines},
             "max_wallclock_seconds": walltime,
-            "append_text": ur"cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
+            "append_text": "cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
         }
         if wfn_file_path != "":
-            inputs['_options']["prepend_text"] = ur"cp %s ." % wfn_file_path
+            inputs['_options']["prepend_text"] = "cp %s ." % wfn_file_path
         
         return inputs
 
