@@ -95,7 +95,7 @@ class HRSTMWorkChain(WorkChain):
         inputs['ppm_calc_folder'] = self.ctx.ppm.out.remote_folder
         inputs['_options'] = {
             "resources": {"num_machines": 6},
-            "max_wallclock_seconds": 14400, # 4:00 hours
+            "max_wallclock_seconds": 72000, # 20:00 hours
         }
 
         self.report("HR-STM Inputs: " + str(inputs))

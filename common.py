@@ -269,9 +269,9 @@ def get_slab_calc_info(workcalc):
     return html
 
 
-def find_struct_wf(structure, computer, f_exist_func):
+def find_struct_wf(structure_node, computer, f_exist_func):
     # check spm
-    extras = structure.get_extras()
+    extras = structure_node.get_extras()
     for ex_k in extras.keys():
         if ex_k.startswith(('stm', 'pdos', 'afm', 'orb', 'hrstm')):
             spm_workchain = load_node(extras[ex_k])
