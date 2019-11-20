@@ -6,7 +6,7 @@ from aiida.orm import SinglefileData
 from aiida.orm import RemoteData
 from aiida.orm import Code
 
-from aiida.engine import WorkChain, ToContext, Calc, while_
+from aiida.engine import WorkChain, ToContext, while_
 from aiida.engine import submit
 
 from apps.scanning_probe import common
@@ -34,18 +34,19 @@ class HRSTMWorkChain(WorkChain):
         spec.input("elpa_switch", valid_type=Bool, default=Bool(True))
 
         spec.input("ppm_code", valid_type=Code)
-        spec.input("ppm_params", valid_type=ParameterData)
+        spec.input("ppm_params", valid_type=Dict)
 
         spec.input("hrstm_code", valid_type=Code)
-        spec.input("hrstm_params", valid_type=ParameterData)
+        spec.input("hrstm_params", valid_type=Dict)
 
         spec.outline(
             cls.run_scf_diag,
             cls.run_ppm,
             cls.run_hrstm,
+            cls.finalize,
         )
 
-        spec.dynamic_output()
+        spec.outputs.dynamic = True
 
     # TODO this is seemingly done everywhere, I don't like copy paste though...
     def run_scf_diag(self):
@@ -55,54 +56,59 @@ class HRSTMWorkChain(WorkChain):
                                         self.inputs.cell,
                                         self.inputs.cp2k_code,
                                         self.inputs.mgrid_cutoff,
-                                        self.inputs.wfn_file_path,
+                                        self.inputs.wfn_file_path.value,
                                         self.inputs.elpa_switch)
 
         self.report("inputs: "+str(inputs))
-        future = submit(Cp2kCalculation.process(), **inputs)
-        return ToContext(scf_diag=Calc(future))
+        future = self.submit(Cp2kCalculation, **inputs)
+        return ToContext(scf_diag=future)
 
 
     def run_ppm(self):
         self.report("Running PPM")
 
         inputs = {}
-        inputs['_label'] = "hrstm_ppm"
+        inputs['metadata'] = {}
+        inputs['metadata']['label'] = "hrstm_ppm"
         inputs['code'] = self.inputs.ppm_code
         inputs['parameters'] = self.inputs.ppm_params
-        inputs['parent_calc_folder'] = self.ctx.scf_diag.out.remote_folder
+        inputs['parent_calc_folder'] = self.ctx.scf_diag.outputs.remote_folder
         # TODO set atom types properly
         inputs['atomtypes'] = SinglefileData(file="/project/apps/scanning_probe/hrstm/atomtypes_2pp.ini")
-        inputs['_options'] = {
+        inputs['metadata']['options'] = {
             "resources": {"num_machines": 1},
             "max_wallclock_seconds": 21600,
         }
 
         self.report("PPM inputs: " + str(inputs))
 
-        future = submit(AfmCalculation.process(), **inputs)
-        return ToContext(ppm=Calc(future))
+        future = self.submit(AfmCalculation, **inputs)
+        return ToContext(ppm=future)
 
 
     def run_hrstm(self):
         self.report("Running HR-STM")
 
         inputs = {}
-        inputs['_label'] = "hrstm"
+        inputs['metadata'] = {}
+        inputs['metadata']['label'] = "hrstm"
         inputs['code'] = self.inputs.hrstm_code
         inputs['parameters'] = self.inputs.hrstm_params
-        inputs['parent_calc_folder'] = self.ctx.scf_diag.out.remote_folder
-        inputs['ppm_calc_folder'] = self.ctx.ppm.out.remote_folder
-        inputs['_options'] = {
+        inputs['parent_calc_folder'] = self.ctx.scf_diag.outputs.remote_folder
+        inputs['ppm_calc_folder'] = self.ctx.ppm.outputs.remote_folder
+        inputs['metadata']['options'] = {
             "resources": {"num_machines": 6},
             "max_wallclock_seconds": 72000, # 20:00 hours
         }
 
         self.report("HR-STM Inputs: " + str(inputs))
 
-        future = submit(HrstmCalculation.process(), **inputs)
-        return ToContext(hrstm=Calc(future))
+        future = self.submit(HrstmCalculation, **inputs)
+        return ToContext(hrstm=future)
 
+    def finalize(self):
+        self.report("Work chain is finished")
+    
 
     # ==========================================================================
     @classmethod
@@ -110,7 +116,8 @@ class HRSTMWorkChain(WorkChain):
                           mgrid_cutoff, wfn_file_path, elpa_switch):
 
         inputs = {}
-        inputs['_label'] = "scf_diag"
+        inputs['metadata'] = {}
+        inputs['metadata']['label'] = "scf_diag"
         inputs['code'] = code
         inputs['file'] = {}
 
@@ -138,7 +145,7 @@ class HRSTMWorkChain(WorkChain):
         
         wfn_file = ""
         if wfn_file_path != "":
-            wfn_file = os.path.basename(wfn_file_path.value)
+            wfn_file = os.path.basename(wfn_file_path)
 
         inp = cls.get_cp2k_input(cell_abc,
                                  mgrid_cutoff,
@@ -154,13 +161,13 @@ class HRSTMWorkChain(WorkChain):
         #inputs['settings'] = settings
 
         # resources
-        inputs['_options'] = {
+        inputs['metadata']['options'] = {
             "resources": {"num_machines": num_machines},
             "max_wallclock_seconds": walltime,
-            "append_text": ur"cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
+            "append_text": "cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
         }
         if wfn_file_path != "":
-            inputs['_options']["prepend_text"] = ur"cp %s ." % wfn_file_path
+            inputs['metadata']['options']["prepend_text"] = "cp %s ." % wfn_file_path
         
         return inputs
 
