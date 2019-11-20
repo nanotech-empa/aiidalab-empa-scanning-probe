@@ -6,7 +6,7 @@ from aiida.orm import SinglefileData
 from aiida.orm import RemoteData
 from aiida.orm import Code
 
-from aiida.engine import WorkChain, ToContext, Calc, while_
+from aiida.engine import WorkChain, ToContext, while_
 from aiida.engine import submit
 
 from aiida_cp2k.calculations import Cp2kCalculation
@@ -35,14 +35,15 @@ class PdosWorkChain(WorkChain):
         spec.input("elpa_switch", valid_type=Bool, default=Bool(True))
         
         spec.input("overlap_code", valid_type=Code)
-        spec.input("overlap_params", valid_type=ParameterData)
+        spec.input("overlap_params", valid_type=Dict)
         
         spec.outline(
             cls.run_scfs,
-            cls.run_overlap
+            cls.run_overlap,
+            cls.finalize,
         )
         
-        spec.dynamic_output()
+        spec.outputs.dynamic = True
     
     def run_scfs(self):
         self.report("Running CP2K diagonalization SCF")
@@ -52,33 +53,34 @@ class PdosWorkChain(WorkChain):
                         self.inputs.pdos_lists,
                         self.inputs.cp2k_code,
                         self.inputs.mgrid_cutoff,
-                        self.inputs.wfn_file_path,
+                        self.inputs.wfn_file_path.value,
                         self.inputs.elpa_switch)
         self.report("slab_inputs: "+str(slab_inputs))
         
-        slab_future = submit(Cp2kCalculation.process(), **slab_inputs)
-        self.to_context(slab_scf=Calc(slab_future))
+        slab_future = self.submit(Cp2kCalculation, **slab_inputs)
+        self.to_context(slab_scf=slab_future)
         
         mol_inputs = self.build_mol_cp2k_inputs(
                         self.inputs.mol_structure,
                         self.inputs.cp2k_code,
                         self.inputs.mgrid_cutoff,
-                        self.inputs.elpa_switch)
+                        elpa_switch = False) # Elpa can cause problems with small systems
         self.report("mol_inputs: "+str(mol_inputs))
         
-        mol_future = submit(Cp2kCalculation.process(), **mol_inputs)
-        self.to_context(mol_scf=Calc(mol_future))        
+        mol_future = self.submit(Cp2kCalculation, **mol_inputs)
+        self.to_context(mol_scf=mol_future)        
            
     def run_overlap(self):
         self.report("Running overlap")
              
         inputs = {}
-        inputs['_label'] = "overlap"
+        inputs['metadata'] = {}
+        inputs['metadata']['label'] = "overlap"
         inputs['code'] = self.inputs.overlap_code
         inputs['parameters'] = self.inputs.overlap_params
-        inputs['parent_slab_folder'] = self.ctx.slab_scf.out.remote_folder
-        inputs['parent_mol_folder'] = self.ctx.mol_scf.out.remote_folder
-        inputs['_options'] = {
+        inputs['parent_slab_folder'] = self.ctx.slab_scf.outputs.remote_folder
+        inputs['parent_mol_folder'] = self.ctx.mol_scf.outputs.remote_folder
+        inputs['metadata']['options'] = {
             "resources": {"num_machines": 4, "num_mpiprocs_per_machine": 12},
             "max_wallclock_seconds": 10600,
         } 
@@ -88,8 +90,11 @@ class PdosWorkChain(WorkChain):
         
         self.report("overlap inputs: " + str(inputs))
         
-        future = submit(OverlapCalculation.process(), **inputs)
+        future = self.submit(OverlapCalculation, **inputs)
         return ToContext(overlap=future)
+    
+    def finalize(self):
+        self.report("Work chain is finished")
     
     
      # ==========================================================================
@@ -98,7 +103,8 @@ class PdosWorkChain(WorkChain):
                           mgrid_cutoff, wfn_file_path, elpa_switch):
 
         inputs = {}
-        inputs['_label'] = "slab_scf"
+        inputs['metadata'] = {}
+        inputs['metadata']['label'] = "slab_scf"
         inputs['code'] = code
         inputs['file'] = {}
         
@@ -124,7 +130,7 @@ class PdosWorkChain(WorkChain):
         
         wfn_file = ""
         if wfn_file_path != "":
-            wfn_file = os.path.basename(wfn_file_path.value)
+            wfn_file = os.path.basename(wfn_file_path)
 
         inp = cls.get_cp2k_input(cell_abc,
                                  mgrid_cutoff,
@@ -141,13 +147,13 @@ class PdosWorkChain(WorkChain):
         inputs['settings'] = settings
 
         # resources
-        inputs['_options'] = {
+        inputs['metadata']['options'] = {
             "resources": {"num_machines": num_machines},
             "max_wallclock_seconds": walltime,
-            "append_text": ur"cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
+            "append_text": "cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
         }
         if wfn_file_path != "":
-            inputs['_options']["prepend_text"] = ur"cp %s ." % wfn_file_path
+            inputs['metadata']['options']["prepend_text"] = "cp %s ." % wfn_file_path
         
         return inputs
     
@@ -157,7 +163,8 @@ class PdosWorkChain(WorkChain):
                           mgrid_cutoff, elpa_switch):
 
         inputs = {}
-        inputs['_label'] = "mol_scf"
+        inputs['metadata'] = {}
+        inputs['metadata']['label'] = "mol_scf"
         inputs['code'] = code
         inputs['file'] = {}
         
@@ -195,10 +202,10 @@ class PdosWorkChain(WorkChain):
         #inputs['settings'] = settings
 
         # resources
-        inputs['_options'] = {
+        inputs['metadata']['options'] = {
             "resources": {"num_machines": num_machines},
             "max_wallclock_seconds": walltime,
-            "append_text": ur"cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
+            "append_text": "cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
         }
         
         return inputs
