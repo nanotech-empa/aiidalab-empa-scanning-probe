@@ -2,6 +2,12 @@
 #from aiida.orm.calculation.work import WorkCalculation
 #from aiida.engine import CalcJob
 
+from aiida.orm import WorkChainNode
+from aiida.orm import load_node
+
+from aiida.orm.querybuilder import QueryBuilder
+from aiida.orm import Code, Computer
+
 from collections import OrderedDict 
 
 ### ----------------------------------------------------------------
@@ -31,62 +37,54 @@ ATOMIC_KIND_INFO = {
 ### ----------------------------------------------------------------
 ### Preprocessing and viewer links
 
+# This code and the way it's processed is to support
+# multiple pre/postprocess versions of the same calculation
 workchain_preproc_and_viewer_info = {
-    'STMWorkChain': OrderedDict([
-        ('stm2', { # If no preprocess matches, error wrt first version is given
+    'STMWorkChain': {
+        # version : {info}
+        0: { 
             'n_calls': 2,
             'viewer_path': "scanning_probe/stm/view_stm.ipynb",
             'retrieved_files': [(1, ["stm.npz"])], # [(step_index, list_of_retr_files), ...]
             'struct_label': 'structure',
-            'req_param': ('stm_params', '--fwhms'), # required parameterdata input and a key in it
-        }),
-        ('stm1', {
-            'n_calls': 2,
-            'viewer_path': "scanning_probe/stm/view_stm-v1.ipynb",
-            'retrieved_files': [(1, ["stm.npz"])],
-            'struct_label': 'structure',
-        }),
-        ('stm0', {
-            'n_calls': 3,
-            'viewer_path': "scanning_probe/stm/view_stm-v0.ipynb",
-            'retrieved_files': [(2, ["stm_ch.npz"])],
-            'struct_label': 'structure',
-        })
-    ]),
-    'PdosWorkChain': OrderedDict([
-        ('pdos', {
+        },
+    },
+    'PdosWorkChain': {
+        0: {
             'n_calls': 3,
             'viewer_path': "scanning_probe/pdos/view_pdos.ipynb",
             'retrieved_files': [(0, ["aiida-list1-1.pdos"]), (2, ["overlap.npz"])],
             'struct_label': 'slabsys_structure',
-        }),
-    ]),
-    'AfmWorkChain': OrderedDict([
-        ('afm', {
+        },
+    },
+    'AfmWorkChain': {
+        0: {
             'n_calls': 3,
             'viewer_path': "scanning_probe/afm/view_afm.ipynb",
             'retrieved_files': [(1, ["df.npy"]), (2, ["df.npy"])],
             'struct_label': 'structure',
-        }),
-    ]),
-    'OrbitalWorkChain': OrderedDict([
-        ('orb1', {
+        },
+    },
+    'OrbitalWorkChain': {
+        0: {
             'n_calls': 2,
             'viewer_path': "scanning_probe/orb/view_orb.ipynb",
             'retrieved_files': [(1, ["orb.npz"])],
             'struct_label': 'structure',
-            'req_param': ('stm_params', '--orb_fwhms'),
-        }),
-        ('orb0', {
-            'n_calls': 2,
-            'viewer_path': "scanning_probe/orb/view_orb-v0.ipynb",
-            'retrieved_files': [(1, ["orb.npz"])],
+        },
+    },
+    'HRSTMWorkChain': {
+        0: {
+            'n_calls': 3,
+            'viewer_path': "scanning_probe/hrstm/view_hrstm.ipynb",
+            'retrieved_files': [(1, ["df.npy"]), (2, ['hrstm_meta.npy', 'hrstm.npz'])],
             'struct_label': 'structure',
-        }),
-    ]),
+        },
+    },
 }
 
-PREPROCESS_VERSION = 1.02
+
+PREPROCESS_VERSION = 1.04
 
 def preprocess_one(workcalc):
     """
@@ -94,60 +92,37 @@ def preprocess_one(workcalc):
     Supports preprocess of multiple versions
     """
     
-    workcalc_name = workcalc.get_attrs()['_process_label']
-    version_preproc_dict = workchain_preproc_and_viewer_info[workcalc_name]
+    workcalc_name = workcalc.attributes['process_label']
     
-    prefix = None
-    reason = None
-    
-    for prefix_version in version_preproc_dict:
-        n_calls = version_preproc_dict[prefix_version]['n_calls']
-        retr_list_per_step = version_preproc_dict[prefix_version]['retrieved_files']
+    if 'version' in workcalc.extras:
+        workcalc_version = workcalc.extras['version']
+    else:
+        workcalc_version = 0
         
-        # ---
-        # check if number of calls matches
-        if len(workcalc.get_outputs()) < n_calls:
-            if reason is None:
-                reason = "Not all calculations started."
-            continue
-        
-        # ---
-        # check if all specified files are retrieved
-        success = True
-        for rlps in retr_list_per_step:
-            calc_step, retr_list = rlps
-            calc = workcalc.get_outputs()[calc_step]
-            retrieved_files = calc.out.retrieved.get_folder_list()
-            if not all(f in retrieved_files for f in retr_list):
-                if reason is None:
-                    reason = "Not all files were retrieved."
-                success = False
-                break
-        if not success:
-            continue
-            
-        # ---
-        # check if the required parameter is there
-        if 'req_param' in version_preproc_dict[prefix_version]:
-            req_param, req_key = version_preproc_dict[prefix_version]['req_param']
-            inp_dict = workcalc.get_inputs_dict()
-            if not (req_param in inp_dict and req_key in inp_dict[req_param].dict):
-                if reason is None:
-                    reason = "Required parameter not existing."
-                continue
-                
-        # ---
-        # found match!    
-        prefix = prefix_version
-        break
-            
-    if prefix is None:
-        raise(Exception(reason))
+    prepoc_info_dict = workchain_preproc_and_viewer_info[workcalc_name][workcalc_version]
     
-    structure = workcalc.get_inputs_dict()[version_preproc_dict[prefix]['struct_label']]
-    pk_numbers = [e for e in structure.get_extras() if e.startswith(prefix[:-1])]
+    # Check if the calculation was successful
+    # ---
+    # check if number of calls matches
+    if len(workcalc.called) < prepoc_info_dict['n_calls']:
+        raise(Exception("Not all calculations started."))
+    # ---
+    # check if all specified files are retrieved
+    success = True
+    for rlps in prepoc_info_dict['retrieved_files']:
+        calc_step, retr_list = rlps
+        calc = list(reversed(workcalc.called))[calc_step]
+        retrieved_files = calc.outputs.retrieved.list_object_names()
+        if not all(f in retrieved_files for f in retr_list):
+            raise(Exception("Not all files were retrieved."))
+    # ---
+    
+    structure = workcalc.inputs[prepoc_info_dict['struct_label']]
+    
+    # Add the link to the SPM calc to the structure extras in format STMWorkChain_1: <stm_wc_pk> 
+    pk_numbers = [e for e in structure.extras if e.startswith(workcalc_name)]
     pk_numbers = [int(e.split('_')[1]) for e in pk_numbers if e.split('_')[1].isdigit()]
-    pks = [e[1] for e in structure.get_extras().items() if e[0].startswith(prefix[:-1])]
+    pks = [e[1] for e in structure.extras.items() if e[0].startswith(workcalc_name)]
     if workcalc.pk in pks:
         return
     nr = 1
@@ -156,19 +131,19 @@ def preprocess_one(workcalc):
             if nr in pk_numbers:
                 continue
             break
-    structure.set_extra('%s_%d_pk'% (prefix, nr), workcalc.pk)
+    structure.set_extra('%s_%d_pk'% (workcalc_name, nr), workcalc.pk)
     
 
 def preprocess_spm_calcs(workchain_list = ['STMWorkChain', 'PdosWorkChain', 'AfmWorkChain']):
     qb = QueryBuilder()
-    qb.append(WorkCalculation, filters={
-        'attributes._process_label': {'in': workchain_list},
+    qb.append(WorkChainNode, filters={
+        'attributes.process_label': {'in': workchain_list},
         'or':[
                {'extras': {'!has_key': 'preprocess_version'}},
                {'extras.preprocess_version': {'<': PREPROCESS_VERSION}},
            ],
     })
-    qb.order_by({WorkCalculation:{'ctime':'asc'}})
+    qb.order_by({WorkChainNode:{'ctime':'asc'}})
     
     for m in qb.all():
         n = m[0]
@@ -177,21 +152,21 @@ def preprocess_spm_calcs(workchain_list = ['STMWorkChain', 'PdosWorkChain', 'Afm
         if not n.is_sealed:
             print("Skipping underway workchain PK %d"%n.pk)
             continue
-        calc_states = [out.get_state() for out in n.get_outputs()]
+        calc_states = [out.get_state() for out in n.outputs]
         if 'WITHSCHEDULER' in calc_states:
             print("Skipping underway workchain PK %d"%n.pk)
             continue
         ## ---------------------------------------------------------------
             
-        if 'obsolete' not in n.get_extras():
+        if 'obsolete' not in n.extras:
             n.set_extra('obsolete', False)
         if n.get_extra('obsolete'):
             continue
         
-        wc_name = n.get_attrs()['_process_label']
+        wc_name = n.attributes['process_label']
         
         try:
-            if not all([calc.get_state() == 'FINISHED' for calc in n.get_outputs()]):
+            if not all([calc.get_state() == 'FINISHED' for calc in n.outputs]):
                 raise(Exception("Not all calculations are 'FINISHED'"))
             
             preprocess_one(n)
@@ -200,7 +175,7 @@ def preprocess_spm_calcs(workchain_list = ['STMWorkChain', 'PdosWorkChain', 'Afm
             n.set_extra('preprocess_successful', True)
             n.set_extra('preprocess_version', PREPROCESS_VERSION)
             
-            if 'preprocess_error' in n.get_extras():
+            if 'preprocess_error' in n.extras:
                 n.del_extra('preprocess_error')
             
         except Exception as e:
@@ -212,15 +187,27 @@ def preprocess_spm_calcs(workchain_list = ['STMWorkChain', 'PdosWorkChain', 'Afm
 def create_viewer_link_html(structure_extras, apps_path):
     calc_links_str = ""
     for key in sorted(structure_extras.keys()):
-        for wc_version_dict in workchain_preproc_and_viewer_info.values():
-            for prefix in wc_version_dict.keys():
-                if key.split('_')[0] == prefix:
-                    nr = key.split('_')[1]
-                    pk = structure_extras[key]
-                    link_name = ''.join([i for i in prefix if not i.isdigit()])
-                    link_name = link_name.upper()
-                    calc_links_str += "<a target='_blank' href='%s?pk=%s'>%s %s</a><br />" % (
-                        apps_path + wc_version_dict[prefix]['viewer_path'], pk, link_name, nr)
+        key_sp = key.split('_')        
+        if len(key_sp) < 2:
+            continue    
+        wc_name, nr = key.split('_')[:2]
+        if wc_name not in workchain_preproc_and_viewer_info:
+            continue
+            
+        link_name = wc_name.replace('WorkChain', '')
+        link_name = link_name.replace('Workchain', '')
+        spm_pk = int(structure_extras[key])
+        
+        spm_node = load_node(spm_pk)
+        ver = 0
+        if 'version' in spm_node.extras:
+            ver = spm_node.extras['version']
+        
+        viewer_path = workchain_preproc_and_viewer_info[wc_name][ver]['viewer_path']
+        
+        calc_links_str += "<a target='_blank' href='%s?pk=%s'>%s %s</a><br />" % (
+            apps_path + viewer_path, spm_pk, link_name, nr)
+        
     return calc_links_str
     
     
@@ -231,8 +218,8 @@ def create_viewer_link_html(structure_extras, apps_path):
 
 def get_calc_by_label(workcalc, label):
     qb = QueryBuilder()
-    qb.append(WorkCalculation, filters={'uuid':workcalc.uuid})
-    qb.append(JobCalculation, output_of=WorkCalculation, filters={'label':label})
+    qb.append(WorkChainNode, filters={'uuid':workcalc.uuid})
+    qb.append(JobCalculation, output_of=WorkChainNode, filters={'label':label})
     assert qb.count() == 1
     calc = qb.first()[0]
     assert(calc.get_state() == 'FINISHED')
@@ -293,3 +280,18 @@ def find_struct_wf(structure_node, computer, f_exist_func):
                 print("Found .wfn from geo_opt")
                 return wfn_path
     return ""
+
+def comp_plugin_codes(computer_name, plugin_name):
+    qb = QueryBuilder()
+    qb.append(Computer, project='name', tag='computer')
+    qb.append(Code, project='*', with_computer='computer', filters={
+        'attributes.input_plugin': plugin_name,
+        'or': [{'extras': {'!has_key': 'hidden'}}, {'extras.hidden': False}]
+    })
+    qb.order_by({Code: {'id': 'desc'}})
+    codes = qb.all()
+    sel_codes = []
+    for code in codes:
+        if code[0] == computer_name:
+            sel_codes.append(code[1])
+    return sel_codes
