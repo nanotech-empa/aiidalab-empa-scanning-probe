@@ -6,8 +6,7 @@ from aiida.orm import SinglefileData
 from aiida.orm import RemoteData
 from aiida.orm import Code
 
-from aiida.engine import WorkChain, ToContext, Calc, while_
-from aiida.engine import submit
+from aiida.engine import WorkChain, ToContext, while_
 
 from aiida_cp2k.calculations import Cp2kCalculation
 
@@ -32,17 +31,18 @@ class OrbitalWorkChain(WorkChain):
         spec.input("structure", valid_type=StructureData)
         spec.input("wfn_file_path", valid_type=Str, default=Str(""))
         
-        spec.input("dft_params", valid_type=ParameterData)
+        spec.input("dft_params", valid_type=Dict)
         
         spec.input("stm_code", valid_type=Code)
-        spec.input("stm_params", valid_type=ParameterData)
+        spec.input("stm_params", valid_type=Dict)
         
         spec.outline(
             cls.run_scf_diag,
             cls.run_stm,
+            cls.finalize,
         )
         
-        spec.dynamic_output()
+        spec.outputs.dynamic = True
     
     def run_scf_diag(self):
         self.report("Running CP2K diagonalization SCF")
@@ -52,23 +52,24 @@ class OrbitalWorkChain(WorkChain):
         inputs = self.build_cp2k_inputs(self.inputs.structure,
                                         self.inputs.cp2k_code,
                                         self.inputs.dft_params.get_dict(),
-                                        self.inputs.wfn_file_path,
+                                        self.inputs.wfn_file_path.value,
                                         n_lumo)
 
         self.report("inputs: "+str(inputs))
-        future = submit(Cp2kCalculation.process(), **inputs)
-        return ToContext(scf_diag=Calc(future))
+        future = self.submit(Cp2kCalculation, **inputs)
+        return ToContext(scf_diag=future)
    
            
     def run_stm(self):
         self.report("STM calculation")
              
         inputs = {}
-        inputs['_label'] = "orb"
+        inputs['metadata'] = {}
+        inputs['metadata']['label'] = "orb"
         inputs['code'] = self.inputs.stm_code
         inputs['parameters'] = self.inputs.stm_params
-        inputs['parent_calc_folder'] = self.ctx.scf_diag.out.remote_folder
-        inputs['_options'] = {
+        inputs['parent_calc_folder'] = self.ctx.scf_diag.outputs.remote_folder
+        inputs['metadata']['options'] = {
             "resources": {"num_machines": 1},
             "max_wallclock_seconds": 3600,
         } 
@@ -79,8 +80,11 @@ class OrbitalWorkChain(WorkChain):
         
         self.report("Inputs: " + str(inputs))
         
-        future = submit(StmCalculation.process(), **inputs)
+        future = self.submit(StmCalculation, **inputs)
         return ToContext(stm=future)
+    
+    def finalize(self):
+        self.report("Work chain is finished")
     
     
      # ==========================================================================
@@ -88,10 +92,12 @@ class OrbitalWorkChain(WorkChain):
     def build_cp2k_inputs(cls, structure, code, dft_params, wfn_file_path, n_lumo):
 
         inputs = {}
-        inputs['_label'] = "scf_diag"
         inputs['code'] = code
         inputs['file'] = {}
-
+        inputs['metadata'] = {}
+        
+        inputs['metadata']['label'] = "scf_diag"
+        
         
         atoms = structure.get_ase()  # slow
         n_atoms = len(atoms)
@@ -119,7 +125,7 @@ class OrbitalWorkChain(WorkChain):
         
         wfn_file = ""
         if wfn_file_path != "":
-            wfn_file = os.path.basename(wfn_file_path.value)
+            wfn_file = os.path.basename(wfn_file_path)
             
         added_mos = max(n_lumo, 50)
 
@@ -139,13 +145,13 @@ class OrbitalWorkChain(WorkChain):
         inputs['settings'] = settings
 
         # resources
-        inputs['_options'] = {
+        inputs['metadata']['options'] = {
             "resources": {"num_machines": num_machines},
             "max_wallclock_seconds": walltime,
-            "append_text": ur"cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
+            "append_text": "cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
         }
         if wfn_file_path != "":
-            inputs['_options']["prepend_text"] = ur"cp %s ." % wfn_file_path
+            inputs['metadata']['options']["prepend_text"] = "cp %s ." % wfn_file_path
         
         return inputs
     
@@ -156,7 +162,7 @@ class OrbitalWorkChain(WorkChain):
         tmpdir = tempfile.mkdtemp()
         file_path = tmpdir + "/" + filename
 
-        orig_file = BytesIO()
+        orig_file = StringIO()
         atoms.write(orig_file, format='xyz')
         orig_file.seek(0)
         all_lines = orig_file.readlines()
