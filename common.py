@@ -7,6 +7,8 @@ from aiida.orm import load_node
 
 from aiida.orm.querybuilder import QueryBuilder
 from aiida.orm import Code, Computer
+from aiida.engine import CalcJob
+
 
 from collections import OrderedDict 
 
@@ -219,21 +221,21 @@ def create_viewer_link_html(structure_extras, apps_path):
 def get_calc_by_label(workcalc, label):
     qb = QueryBuilder()
     qb.append(WorkChainNode, filters={'uuid':workcalc.uuid})
-    qb.append(JobCalculation, output_of=WorkChainNode, filters={'label':label})
+    qb.append(CalcJob, with_incoming=WorkChainNode, filters={'label':label})
     assert qb.count() == 1
     calc = qb.first()[0]
-    assert(calc.get_state() == 'FINISHED')
+    assert(calc.is_finished_ok)
     return calc
 
-def get_slab_calc_info(workcalc):
+def get_slab_calc_info(struct_node):
     html = ""
     try:
-        cp2k_calc = workcalc.inp.structure.get_inputs()[0]
-        opt_workcalc = cp2k_calc.get_inputs_dict()['CALL']
-        thumbnail = opt_workcalc.get_extra('thumbnail')
-        description = opt_workcalc.description
-        struct_description = opt_workcalc.get_extra('structure_description')
-        struct_pk = workcalc.inp.structure.pk
+        cp2k_calc = struct_node.creator
+        opt_workchain = cp2k_calc.caller
+        thumbnail = opt_workchain.extras['thumbnail']
+        description = opt_workchain.description
+        struct_description = opt_workchain.extras['structure_description']
+        struct_pk = struct_node.pk
         
         html += '<style>#aiida_results td,th {padding: 5px}</style>' 
         html += '<table border=1 id="geom_info" style="margin:0px;">'
