@@ -12,61 +12,33 @@ from aiida.common import InputValidationError
 class AfmCalculation(CalcJob):
 
     # --------------------------------------------------------------------------
-    def _init_internal_params(self):
-        """
-        Set parameters of instance
-        """
-        super(AfmCalculation, self)._init_internal_params()
+    @classmethod
+    def define(cls, spec):
+        super(AfmCalculation, cls).define(spec)
+        spec.input('parameters', valid_type=Dict, help='AFM input parameters')
+        spec.input('parent_calc_folder', valid_type=RemoteData, help='remote folder')
+        spec.input('atomtypes', valid_type=SinglefileData, help='atomtypes.ini file')
+        
+        # Don't use mpi by default
+        spec.input('metadata.options.withmpi', valid_type=bool, default=False)
+
 
     # --------------------------------------------------------------------------
-    @classproperty
-    def _use_methods(cls):
-        """
-        Extend the parent _use_methods with further keys.
-        This will be manually added to the _use_methods in each subclass
-        """
-        retdict = JobCalculation._use_methods
-        retdict.update({
-            "parameters": {
-               'valid_types': ParameterData,
-               'additional_parameter': None,
-               'linkname': 'parameters',
-               'docstring': "The node that specifies the "
-                            "input parameters",
-               },
-            "parent_calc_folder": {
-               'valid_types': RemoteData,
-               'additional_parameter': None,
-               'linkname': 'parent_calc_folder',
-               'docstring': "remote folder containing hartree potential",
-               },
-            "atomtypes": {
-               'valid_types': SinglefileData,
-               'additional_parameter': None,
-               'linkname': 'atomtypes',
-               'docstring': "atomtypes.ini file",
-               },
-            })
-        return retdict
-
-    # --------------------------------------------------------------------------
-    def prepare_for_submission(self, tempfolder, inputdict):
-        """
-        This is the routine to be called when you want to create
-        the input files and related stuff with a plugin.
-        :param tempfolder: a aiida.common.folders.Folder subclass where
-                           the plugin should put all its files.
-        :param inputdict: a dictionary with the input nodes, as they would
-                be returned by get_inputdata_dict (without the Code!)
+    def prepare_for_submission(self, folder):
+        """Create the input files from the input nodes passed to this instance of the `CalcJob`.
+        :param folder: an `aiida.common.folders.Folder` to temporarily write files on disk
+        :return: `aiida.common.datastructures.CalcInfo` instance
         """
         
-        code, params, parent_calc_folder, atomtypes_file = self._verify_inlinks(inputdict)
+        settings = self.inputs.settings.get_dict() if 'settings' in self.inputs else {}
+        
+        param_dict = self.inputs.parameters.get_dict()
         
         # ---------------------------------------------------
         # Write params.ini file
-        params_fn = tempfolder.get_abs_path("params.ini")
+        params_fn = folder.get_abs_path("params.ini")
         with open(params_fn, 'w') as f:
-            for key, val in params.items():
+            for key, val in param_dict.items():
                 line = str(key) + " "
                 if isinstance(val, list):
                     line += " ".join(str(v) for v in val)
@@ -77,7 +49,7 @@ class AfmCalculation(CalcJob):
         
         # create code info
         codeinfo = CodeInfo()
-        codeinfo.code_uuid = code.uuid
+        codeinfo.code_uuid = self.inputs.code.uuid
         codeinfo.withmpi = False
 
         # create calc info
@@ -87,54 +59,21 @@ class AfmCalculation(CalcJob):
 
         # file lists
         calcinfo.remote_symlink_list = []
-        calcinfo.local_copy_list = [(atomtypes_file.get_file_abs_path(), 'atomtypes.ini')]
+        calcinfo.local_copy_list = [(self.inputs.atomtypes.uuid, self.inputs.atomtypes.filename, 'atomtypes.ini')]
         calcinfo.remote_copy_list = []
         calcinfo.retrieve_list = ["*/*/*.npy"]
-
+        
         # symlinks
-        if parent_calc_folder is not None:
-            comp_uuid = parent_calc_folder.get_computer().uuid
-            remote_path = parent_calc_folder.get_remote_path()
-            symlink = (comp_uuid, remote_path, "parent_calc_folder")
-            calcinfo.remote_symlink_list.append(symlink)
+        if 'parent_calc_folder' in self.inputs:
+            comp_uuid = self.inputs.parent_calc_folder.computer.uuid
+            remote_path = self.inputs.parent_calc_folder.get_remote_path()
+            copy_info  = (comp_uuid, remote_path, 'parent_calc_folder/')
+            if self.inputs.code.computer.uuid == comp_uuid:  # if running on the same computer - make a symlink
+                # if not - copy the folder
+                calcinfo.remote_symlink_list.append(copy_info)
+            else:
+                calcinfo.remote_copy_list.append(copy_info)
         
         return calcinfo
-
-    # --------------------------------------------------------------------------
-    def _verify_inlinks(self, inputdict):
-            
-        try:
-            code = inputdict.pop(self.get_linkname('code'))
-        except KeyError:
-            raise InputValidationError("No code specified for this calculation")
-        
-        try:
-            params_node = inputdict.pop(self.get_linkname('parameters'))
-        except KeyError:
-            raise InputValidationError("No parameters specified for this calculation")
-        if not isinstance(params_node, ParameterData):
-            raise InputValidationError("parameters is not of type ParameterData")
-        params = params_node.get_dict()
-        
-        try:
-            parent_calc_folder = inputdict.pop(self.get_linkname('parent_calc_folder'))
-        except KeyError:
-            raise InputValidationError("No parent_calc_folder specified for this calculation")
-        if not isinstance(parent_calc_folder, RemoteData):
-            raise InputValidationError("parent_calc_folder is not of type RemoteData")
-        
-        try:
-            atomtypes_file = inputdict.pop(self.get_linkname('atomtypes'))
-        except KeyError:
-            raise InputValidationError("No atomtypes specified for this calculation")
-        if not isinstance(atomtypes_file, SinglefileData):
-            raise InputValidationError("atomtypes is not of type SinglefileData")
-           
-        # Here, there should be no more parameters...
-        if inputdict:
-            raise InputValidationError("The following input data nodes are "
-                "unrecognized: {}".format(inputdict.keys()))
-            
-        return (code, params, parent_calc_folder, atomtypes_file)
 
 # EOF

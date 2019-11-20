@@ -6,7 +6,7 @@ from aiida.orm import SinglefileData
 from aiida.orm import RemoteData
 from aiida.orm import Code
 
-from aiida.engine import WorkChain, ToContext, Calc, while_
+from aiida.engine import WorkChain, ToContext, while_
 from aiida.engine import submit
 
 from aiida_cp2k.calculations import Cp2kCalculation
@@ -33,17 +33,18 @@ class AfmWorkChain(WorkChain):
         spec.input("elpa_switch", valid_type=Bool, default=Bool(True))
         
         spec.input("afm_pp_code", valid_type=Code)
-        spec.input("afm_pp_params", valid_type=ParameterData)
+        spec.input("afm_pp_params", valid_type=Dict)
         
         spec.input("afm_2pp_code", valid_type=Code)
-        spec.input("afm_2pp_params", valid_type=ParameterData)
+        spec.input("afm_2pp_params", valid_type=Dict)
         
         spec.outline(
             cls.run_scf_diag,
-            cls.run_afms
+            cls.run_afms,
+            cls.finalize,
         )
         
-        spec.dynamic_output()
+        spec.outputs.dynamic = True
     
     def run_scf_diag(self):
         self.report("Running CP2K diagonalization SCF")
@@ -52,46 +53,51 @@ class AfmWorkChain(WorkChain):
                                         self.inputs.cell,
                                         self.inputs.cp2k_code,
                                         self.inputs.mgrid_cutoff,
-                                        self.inputs.wfn_file_path,
+                                        self.inputs.wfn_file_path.value,
                                         self.inputs.elpa_switch)
 
         self.report("inputs: "+str(inputs))
-        future = submit(Cp2kCalculation.process(), **inputs)
-        return ToContext(scf_diag=Calc(future))
+        future = self.submit(Cp2kCalculation, **inputs)
+        return ToContext(scf_diag=future)
 
     def run_afms(self):
         self.report("Running PP")
         
         afm_pp_inputs = {}
-        afm_pp_inputs['_label'] = "afm_pp"
+        afm_pp_inputs['metadata'] = {}
+        afm_pp_inputs['metadata']['label'] = "afm_pp"
         afm_pp_inputs['code'] = self.inputs.afm_pp_code
         afm_pp_inputs['parameters'] = self.inputs.afm_pp_params
-        afm_pp_inputs['parent_calc_folder'] = self.ctx.scf_diag.out.remote_folder
+        afm_pp_inputs['parent_calc_folder'] = self.ctx.scf_diag.outputs.remote_folder
         afm_pp_inputs['atomtypes'] = SinglefileData(file="/project/apps/scanning_probe/afm/atomtypes_pp.ini")
-        afm_pp_inputs['_options'] = {
+        afm_pp_inputs['metadata']['options'] = {
             "resources": {"num_machines": 1},
             "max_wallclock_seconds": 7200,
         }
         self.report("Afm pp inputs: " + str(afm_pp_inputs))
-        afm_pp_future = submit(AfmCalculation.process(), **afm_pp_inputs)
-        self.to_context(afm_pp=Calc(afm_pp_future))
+        afm_pp_future = self.submit(AfmCalculation, **afm_pp_inputs)
+        self.to_context(afm_pp=afm_pp_future)
         
         self.report("Running 2PP")
         
         afm_2pp_inputs = {}
-        afm_2pp_inputs['_label'] = "afm_2pp"
+        afm_2pp_inputs['metadata'] = {}
+        afm_2pp_inputs['metadata']['label'] = "afm_2pp"
         afm_2pp_inputs['code'] = self.inputs.afm_2pp_code
         afm_2pp_inputs['parameters'] = self.inputs.afm_2pp_params
-        afm_2pp_inputs['parent_calc_folder'] = self.ctx.scf_diag.out.remote_folder
+        afm_2pp_inputs['parent_calc_folder'] = self.ctx.scf_diag.outputs.remote_folder
         afm_2pp_inputs['atomtypes'] = SinglefileData(file="/project/apps/scanning_probe/afm/atomtypes_2pp.ini")
-        afm_2pp_inputs['_options'] = {
+        afm_2pp_inputs['metadata']['options'] = {
             "resources": {"num_machines": 1},
             "max_wallclock_seconds": 7200,
         }
         self.report("Afm 2pp inputs: " + str(afm_2pp_inputs))
-        afm_2pp_future = submit(AfmCalculation.process(), **afm_2pp_inputs)
-        self.to_context(afm_2pp=Calc(afm_2pp_future))
+        afm_2pp_future = self.submit(AfmCalculation, **afm_2pp_inputs)
+        self.to_context(afm_2pp=afm_2pp_future)
    
+    def finalize(self):
+        self.report("Work chain is finished")
+    
     
     # ==========================================================================
     @classmethod
@@ -99,7 +105,8 @@ class AfmWorkChain(WorkChain):
                           mgrid_cutoff, wfn_file_path, elpa_switch):
 
         inputs = {}
-        inputs['_label'] = "scf_diag"
+        inputs['metadata'] = {}
+        inputs['metadata']['label'] = "scf_diag"
         inputs['code'] = code
         inputs['file'] = {}
 
@@ -127,7 +134,7 @@ class AfmWorkChain(WorkChain):
         
         wfn_file = ""
         if wfn_file_path != "":
-            wfn_file = os.path.basename(wfn_file_path.value)
+            wfn_file = os.path.basename(wfn_file_path)
 
         inp = cls.get_cp2k_input(cell_abc,
                                  mgrid_cutoff,
@@ -143,13 +150,13 @@ class AfmWorkChain(WorkChain):
         #inputs['settings'] = settings
 
         # resources
-        inputs['_options'] = {
+        inputs['metadata']['options'] = {
             "resources": {"num_machines": num_machines},
             "max_wallclock_seconds": walltime,
-            "append_text": ur"cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
+            "append_text": "cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
         }
         if wfn_file_path != "":
-            inputs['_options']["prepend_text"] = ur"cp %s ." % wfn_file_path
+            inputs['metadata']['options']["prepend_text"] = "cp %s ." % wfn_file_path
         
         return inputs
 
