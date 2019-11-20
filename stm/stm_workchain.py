@@ -7,7 +7,6 @@ from aiida.orm import RemoteData
 from aiida.orm import Code
 
 from aiida.engine import WorkChain, ToContext, while_
-#from aiida.engine import submit
 
 from aiida_cp2k.calculations import Cp2kCalculation
 
@@ -39,6 +38,7 @@ class STMWorkChain(WorkChain):
         spec.outline(
             cls.run_scf_diag,
             cls.run_stm,
+            cls.finalize,
         )
         
         spec.outputs.dynamic = True
@@ -52,12 +52,12 @@ class STMWorkChain(WorkChain):
                                         self.inputs.cell,
                                         self.inputs.cp2k_code,
                                         self.inputs.mgrid_cutoff,
-                                        self.inputs.wfn_file_path,
+                                        self.inputs.wfn_file_path.value,
                                         self.inputs.elpa_switch,
                                         emax)
 
         self.report("inputs: "+str(inputs))
-        future = submit(Cp2kCalculation, **inputs)
+        future = self.submit(Cp2kCalculation, **inputs)
         return ToContext(scf_diag=future)
    
            
@@ -65,11 +65,12 @@ class STMWorkChain(WorkChain):
         self.report("STM calculation")
              
         inputs = {}
-        inputs['_label'] = "stm"
+        inputs['metadata'] = {}
+        inputs['metadata']['label'] = "stm"
         inputs['code'] = self.inputs.stm_code
         inputs['parameters'] = self.inputs.stm_params
-        inputs['parent_calc_folder'] = self.ctx.scf_diag.out.remote_folder
-        inputs['_options'] = {
+        inputs['parent_calc_folder'] = self.ctx.scf_diag.outputs.remote_folder
+        inputs['metadata']['options'] = {
             "resources": {"num_machines": 6},
             "max_wallclock_seconds": 21600,
         } 
@@ -80,8 +81,11 @@ class STMWorkChain(WorkChain):
         
         self.report("Inputs: " + str(inputs))
         
-        future = submit(StmCalculation, **inputs)
+        future = self.submit(StmCalculation, **inputs)
         return ToContext(stm=future)
+    
+    def finalize(self):
+        self.report("Work chain is finished")
     
     
      # ==========================================================================
@@ -90,9 +94,11 @@ class STMWorkChain(WorkChain):
                           mgrid_cutoff, wfn_file_path, elpa_switch, emax):
 
         inputs = {}
-        inputs['_label'] = "scf_diag"
         inputs['code'] = code
+        inputs['metadata'] = {}
         inputs['file'] = {}
+        
+        inputs['metadata']['label'] = "scf_diag"
 
         
         atoms = structure.get_ase()  # slow
@@ -120,7 +126,7 @@ class STMWorkChain(WorkChain):
         
         wfn_file = ""
         if wfn_file_path != "":
-            wfn_file = os.path.basename(wfn_file_path.value)
+            wfn_file = os.path.basename(wfn_file_path)
             
         added_mos = np.max([100, int(n_atoms*emax/6.0)])
 
@@ -139,13 +145,13 @@ class STMWorkChain(WorkChain):
         #inputs['settings'] = settings
 
         # resources
-        inputs['_options'] = {
+        inputs['metadata']['options'] = {
             "resources": {"num_machines": num_machines},
             "max_wallclock_seconds": walltime,
             "append_text": "cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
         }
         if wfn_file_path != "":
-            inputs['_options']["prepend_text"] = "cp %s ." % wfn_file_path
+            inputs['metadata']['options']["prepend_text"] = "cp %s ." % wfn_file_path
         
         return inputs
 
