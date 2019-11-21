@@ -86,7 +86,7 @@ workchain_preproc_and_viewer_info = {
 }
 
 
-PREPROCESS_VERSION = 1.04
+PREPROCESS_VERSION = 1.05
 
 def preprocess_one(workcalc):
     """
@@ -178,7 +178,7 @@ def preprocess_spm_calcs(workchain_list = ['STMWorkChain', 'PdosWorkChain', 'Afm
             n.set_extra('preprocess_version', PREPROCESS_VERSION)
             
             if 'preprocess_error' in n.extras:
-                n.del_extra('preprocess_error')
+                n.delete_extra('preprocess_error')
             
         except Exception as e:
             n.set_extra('preprocess_successful', False)
