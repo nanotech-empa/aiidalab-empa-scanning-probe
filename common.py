@@ -9,6 +9,7 @@ from aiida.orm.querybuilder import QueryBuilder
 from aiida.orm import Code, Computer
 from aiida.engine import CalcJob
 
+import subprocess
 
 from collections import OrderedDict 
 
@@ -255,8 +256,14 @@ def get_slab_calc_info(struct_node):
         html = ""
     return html
 
-
-def find_struct_wf(structure_node, computer, f_exist_func):
+def does_remote_file_exist(hostname, path):
+    ssh_cmd="ssh "+hostname+" if [ -f "+path+" ]; then echo 1 ; else echo 0 ; fi"
+    f_exists = subprocess.check_output(ssh_cmd.split())
+    if f_exists.decode()[0] != '1':
+        return False
+    return True
+    
+def find_struct_wf(structure_node, computer):
     # check spm
     extras = structure_node.extras
     for ex_k in extras.keys():
@@ -266,7 +273,7 @@ def find_struct_wf(structure_node, computer, f_exist_func):
             if cp2k_scf_calc.computer.hostname == computer.hostname:
                 wfn_path = cp2k_scf_calc.outputs.remote_folder.get_remote_path() + "/aiida-RESTART.wfn"
                 # check if it exists
-                file_exists = f_exist_func(computer.hostname, wfn_path)
+                file_exists = does_remote_file_exist(computer.hostname, wfn_path)
                 if file_exists:
                     print("Found .wfn from %s"%ex_k)
                     return wfn_path
@@ -277,10 +284,11 @@ def find_struct_wf(structure_node, computer, f_exist_func):
         if geo_comp is not None and geo_comp.hostname == computer.hostname:
             wfn_path = geo_opt_calc.outputs.remote_folder.get_remote_path() + "/aiida-RESTART.wfn"
             # check if it exists
-            file_exists = f_exist_func(computer.hostname, wfn_path)
+            file_exists = does_remote_file_exist(computer.hostname, wfn_path)
             if file_exists:
                 print("Found .wfn from geo_opt")
                 return wfn_path
+    
     return ""
 
 def comp_plugin_codes(computer_name, plugin_name):
