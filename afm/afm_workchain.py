@@ -12,7 +12,9 @@ from aiida.engine import submit
 from aiida_cp2k.calculations import Cp2kCalculation
 
 from apps.scanning_probe import common
-from afm import AfmCalculation
+
+from aiida.plugins import CalculationFactory
+AfmCalculation = CalculationFactory('spm.afm')
 
 import os
 import tempfile
@@ -69,7 +71,7 @@ class AfmWorkChain(WorkChain):
         afm_pp_inputs['code'] = self.inputs.afm_pp_code
         afm_pp_inputs['parameters'] = self.inputs.afm_pp_params
         afm_pp_inputs['parent_calc_folder'] = self.ctx.scf_diag.outputs.remote_folder
-        afm_pp_inputs['atomtypes'] = SinglefileData(file="/project/apps/scanning_probe/afm/atomtypes_pp.ini")
+        afm_pp_inputs['atomtypes'] = SinglefileData(file="/home/aiida/apps/scanning_probe/afm/atomtypes_pp.ini")
         afm_pp_inputs['metadata']['options'] = {
             "resources": {"num_machines": 1},
             "max_wallclock_seconds": 7200,
@@ -86,7 +88,7 @@ class AfmWorkChain(WorkChain):
         afm_2pp_inputs['code'] = self.inputs.afm_2pp_code
         afm_2pp_inputs['parameters'] = self.inputs.afm_2pp_params
         afm_2pp_inputs['parent_calc_folder'] = self.ctx.scf_diag.outputs.remote_folder
-        afm_2pp_inputs['atomtypes'] = SinglefileData(file="/project/apps/scanning_probe/afm/atomtypes_2pp.ini")
+        afm_2pp_inputs['atomtypes'] = SinglefileData(file="/home/aiida/apps/scanning_probe/afm/atomtypes_2pp.ini")
         afm_2pp_inputs['metadata']['options'] = {
             "resources": {"num_machines": 1},
             "max_wallclock_seconds": 7200,

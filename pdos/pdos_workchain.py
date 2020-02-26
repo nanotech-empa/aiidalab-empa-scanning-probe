@@ -12,8 +12,9 @@ from aiida.engine import submit
 from aiida_cp2k.calculations import Cp2kCalculation
 
 from apps.scanning_probe import common
-from overlap import OverlapCalculation
 
+from aiida.plugins import CalculationFactory
+OverlapCalculation = CalculationFactory('spm.overlap')
 
 import os
 import tempfile

@@ -12,8 +12,10 @@ from aiida.engine import submit
 from apps.scanning_probe import common
 
 from aiida_cp2k.calculations import Cp2kCalculation
-from afm import AfmCalculation
-from hrstm import HrstmCalculation
+
+from aiida.plugins import CalculationFactory
+HrstmCalculation = CalculationFactory('spm.hrstm')
+AfmCalculation = CalculationFactory('spm.afm')
 
 import os
 import tempfile
@@ -74,7 +76,7 @@ class HRSTMWorkChain(WorkChain):
         inputs['parameters'] = self.inputs.ppm_params
         inputs['parent_calc_folder'] = self.ctx.scf_diag.outputs.remote_folder
         # TODO set atom types properly
-        inputs['atomtypes'] = SinglefileData(file="/project/apps/scanning_probe/hrstm/atomtypes_2pp.ini")
+        inputs['atomtypes'] = SinglefileData(file="/home/aiida/apps/scanning_probe/hrstm/atomtypes_2pp.ini")
         inputs['metadata']['options'] = {
             "resources": {"num_machines": 1},
             "max_wallclock_seconds": 21600,

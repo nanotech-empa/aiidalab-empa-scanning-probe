@@ -14,7 +14,8 @@ from io import StringIO, BytesIO
 
 from apps.scanning_probe import common
 
-from stm import StmCalculation
+from aiida.plugins import CalculationFactory
+StmCalculation = CalculationFactory('spm.stm')
 
 import os
 import tempfile

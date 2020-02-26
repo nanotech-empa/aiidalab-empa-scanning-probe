@@ -12,7 +12,8 @@ from aiida_cp2k.calculations import Cp2kCalculation
 
 from apps.scanning_probe import common
 
-from stm import StmCalculation
+from aiida.plugins import CalculationFactory
+StmCalculation = CalculationFactory('spm.stm')
 
 import os
 import tempfile
