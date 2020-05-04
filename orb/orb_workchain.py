@@ -231,25 +231,25 @@ class OrbitalWorkChain(WorkChain):
                 'SCF': {
                     'MAX_SCF': '1000',
                     'SCF_GUESS': 'RESTART',
-                    'EPS_SCF': '1.0E-7',
+                    'EPS_SCF': '1.0E-6',
                     'ADDED_MOS': str(added_mos),
                     'CHOLESKY': 'INVERSE',
                     'DIAGONALIZATION': {
                         '_': '',
                     },
-                    'SMEAR': {
-                        'METHOD': 'FERMI_DIRAC',
-                        'ELECTRONIC_TEMPERATURE': '300',
-                    },
+#                    'SMEAR': {
+#                        'METHOD': 'FERMI_DIRAC',
+#                        'ELECTRONIC_TEMPERATURE': '300',
+#                    },
                     'MIXING': {
                         'METHOD': 'BROYDEN_MIXING',
-                        'ALPHA': '0.1',
+                        'ALPHA': '0.2',
                         'BETA': '1.5',
                         'NBROYDEN': '8',
                     },
                     'OUTER_SCF': {
                         'MAX_SCF': '15',
-                        'EPS_SCF': '1.0E-7',
+                        'EPS_SCF': '1.0E-6',
                     },
                     'PRINT': {
                         'RESTART': {
