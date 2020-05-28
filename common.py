@@ -137,7 +137,7 @@ def preprocess_one(workcalc):
     structure.set_extra('%s_%d_pk'% (workcalc_name, nr), workcalc.pk)
     
 
-def preprocess_spm_calcs(workchain_list = ['STMWorkChain', 'PdosWorkChain', 'AfmWorkChain']):
+def preprocess_spm_calcs(workchain_list = ['STMWorkChain', 'PdosWorkChain', 'AfmWorkChain', 'OrbitalWorkChain']):
     qb = QueryBuilder()
     qb.append(WorkChainNode, filters={
         'attributes.process_label': {'in': workchain_list},
