@@ -98,7 +98,7 @@ class OrbitalWorkChain(WorkChain):
         inputs['metadata'] = {}
         
         inputs['metadata']['label'] = "scf_diag"
-        
+       
         
         atoms = structure.get_ase()  # slow
         n_atoms = len(atoms)
@@ -150,6 +150,7 @@ class OrbitalWorkChain(WorkChain):
             "resources": {"num_machines": num_machines},
             "max_wallclock_seconds": walltime,
             "append_text": "cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
+            "parser_name": 'cp2k_advanced_parser',
         }
         if wfn_file_path != "":
             inputs['metadata']['options']["prepend_text"] = "cp %s ." % wfn_file_path
@@ -218,6 +219,7 @@ class OrbitalWorkChain(WorkChain):
             'DFT': {
                 'BASIS_SET_FILE_NAME': 'BASIS_MOLOPT',
                 'POTENTIAL_FILE_NAME': 'POTENTIAL',
+                'CHARGE': "%d" % dft_params['charge'],
                 'QS': {
                     'METHOD': 'GPW',
                     'EXTRAPOLATION': 'ASPC',

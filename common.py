@@ -269,25 +269,34 @@ def find_struct_wf(structure_node, computer):
     for ex_k in extras.keys():
         if ex_k.startswith(('stm', 'pdos', 'afm', 'orb', 'hrstm')):
             spm_workchain = load_node(extras[ex_k])
-            cp2k_scf_calc = spm_workchain.called[0]
-            if cp2k_scf_calc.computer.hostname == computer.hostname:
-                wfn_path = cp2k_scf_calc.outputs.remote_folder.get_remote_path() + "/aiida-RESTART.wfn"
-                # check if it exists
-                file_exists = does_remote_file_exist(computer.hostname, wfn_path)
-                if file_exists:
-                    print("Found .wfn from %s"%ex_k)
-                    return wfn_path
+            
+            # if calc was done using UKS, don't reuse WFN
+            if not spm_workchain.inputs.dft_params['uks']:
+                
+                cp2k_scf_calc = get_calc_by_label(spm_workchain, 'scf_diag')
+                if cp2k_scf_calc.computer.hostname == computer.hostname:
+                    wfn_path = cp2k_scf_calc.outputs.remote_folder.get_remote_path() + "/aiida-RESTART.wfn"
+                    # check if it exists
+                    file_exists = does_remote_file_exist(computer.hostname, wfn_path)
+                    if file_exists:
+                        print("Found .wfn from %s"%ex_k)
+                        return wfn_path
+                    
     # check geo opt
     if structure_node.creator is not None:
         geo_opt_calc = structure_node.creator
-        geo_comp = geo_opt_calc.computer
-        if geo_comp is not None and geo_comp.hostname == computer.hostname:
-            wfn_path = geo_opt_calc.outputs.remote_folder.get_remote_path() + "/aiida-RESTART.wfn"
-            # check if it exists
-            file_exists = does_remote_file_exist(computer.hostname, wfn_path)
-            if file_exists:
-                print("Found .wfn from geo_opt")
-                return wfn_path
+        
+        # if the geo opt was done using UKS, don't reuse WFN
+        if 'UKS' not in dict(geo_opt_calc.inputs['parameters'])['FORCE_EVAL']['DFT']:
+        
+            geo_comp = geo_opt_calc.computer
+            if geo_comp is not None and geo_comp.hostname == computer.hostname:
+                wfn_path = geo_opt_calc.outputs.remote_folder.get_remote_path() + "/aiida-RESTART.wfn"
+                # check if it exists
+                file_exists = does_remote_file_exist(computer.hostname, wfn_path)
+                if file_exists:
+                    print("Found .wfn from geo_opt")
+                    return wfn_path
     
     return ""
 
