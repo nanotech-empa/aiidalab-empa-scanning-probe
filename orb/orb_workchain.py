@@ -198,7 +198,7 @@ class OrbitalWorkChain(WorkChain):
             'GLOBAL': {
                 'RUN_TYPE': 'ENERGY',
                 'WALLTIME': '%d' % walltime,
-                'PRINT_LEVEL': 'LOW',
+                'PRINT_LEVEL': 'MEDIUM',
                 'EXTENDED_FFT_LENGTHS': ''
             },
             'FORCE_EVAL': cls.get_force_eval_qs_dft(dft_params, cell_abc, wfn_file, added_mos, atoms),
@@ -304,6 +304,12 @@ class OrbitalWorkChain(WorkChain):
                 'BASIS_SET': common.ATOMIC_KIND_INFO[symbol]['basis'],
                 'POTENTIAL': common.ATOMIC_KIND_INFO[symbol]['pseudo'],
             })
+        
+        if dft_params['smearing']:
+            force_eval['DFT']['SCF']['SMEAR'] = {
+                'METHOD': 'FERMI_DIRAC',
+                'ELECTRONIC_TEMPERATURE': str(dft_params['smear_t']),
+            }
         
         if dft_params['uks']:
             force_eval['DFT']['UKS'] = ''

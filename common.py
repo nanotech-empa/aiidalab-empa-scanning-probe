@@ -87,7 +87,7 @@ workchain_preproc_and_viewer_info = {
 }
 
 
-PREPROCESS_VERSION = 1.05
+PREPROCESS_VERSION = 1.07
 
 def preprocess_one(workcalc):
     """
@@ -109,6 +109,12 @@ def preprocess_one(workcalc):
     # check if number of calls matches
     if len(workcalc.called) < prepoc_info_dict['n_calls']:
         raise(Exception("Not all calculations started."))
+    
+    # check if the CP2K calculation finished okay
+    cp2k_calc = workcalc.called[-1]
+    if not cp2k_calc.is_finished_ok:
+        raise(Exception("CP2K calculation didn't finish well."))
+    
     # ---
     # check if all specified files are retrieved
     success = True
