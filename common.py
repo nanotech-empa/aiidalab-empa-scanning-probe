@@ -11,7 +11,10 @@ from aiida.engine import CalcJob
 
 import subprocess
 
-from collections import OrderedDict 
+from collections import OrderedDict
+
+import numpy as np
+import ase
 
 ### ----------------------------------------------------------------
 ### ----------------------------------------------------------------
@@ -320,3 +323,9 @@ def comp_plugin_codes(computer_name, plugin_name):
         if code[0] == computer_name:
             sel_codes.append(code[1])
     return sel_codes
+
+def get_bbox(ase_atoms):
+    cx =np.amax(ase_atoms.positions[:,0]) - np.amin(ase_atoms.positions[:,0])
+    cy =np.amax(ase_atoms.positions[:,1]) - np.amin(ase_atoms.positions[:,1])
+    cz =np.amax(ase_atoms.positions[:,2]) - np.amin(ase_atoms.positions[:,2])
+    return np.array([cx, cy, cz])
