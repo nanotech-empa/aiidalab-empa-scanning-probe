@@ -6,6 +6,8 @@ from aiida.orm import SinglefileData
 from aiida.orm import RemoteData
 from aiida.orm import Code
 
+from io import StringIO, BytesIO
+
 from aiida.engine import WorkChain, ToContext, while_
 
 from aiida_cp2k.calculations import Cp2kCalculation
@@ -28,10 +30,9 @@ class STMWorkChain(WorkChain):
         
         spec.input("cp2k_code", valid_type=Code)
         spec.input("structure", valid_type=StructureData)
-        spec.input("cell", valid_type=ArrayData)
-        spec.input("mgrid_cutoff", valid_type=Int, default=Int(600))
-        spec.input("wfn_file_path", valid_type=Str, default=Str(""))
-        spec.input("elpa_switch", valid_type=Bool, default=Bool(True))
+        spec.input("wfn_file_path", valid_type=Str, default=lambda:Str(""))
+        
+        spec.input("dft_params", valid_type=Dict)
         
         spec.input("stm_code", valid_type=Code)
         spec.input("stm_params", valid_type=Dict)
@@ -50,11 +51,9 @@ class STMWorkChain(WorkChain):
         emax = float(self.inputs.stm_params.get_dict()['--energy_range'][1])
 
         inputs = self.build_cp2k_inputs(self.inputs.structure,
-                                        self.inputs.cell,
                                         self.inputs.cp2k_code,
-                                        self.inputs.mgrid_cutoff,
+                                        self.inputs.dft_params.get_dict(),
                                         self.inputs.wfn_file_path.value,
-                                        self.inputs.elpa_switch,
                                         emax)
 
         self.report("inputs: "+str(inputs))
@@ -91,8 +90,7 @@ class STMWorkChain(WorkChain):
     
      # ==========================================================================
     @classmethod
-    def build_cp2k_inputs(cls, structure, cell, code,
-                          mgrid_cutoff, wfn_file_path, elpa_switch, emax):
+    def build_cp2k_inputs(cls, structure, code, dft_params, wfn_file_path, emax):
 
         inputs = {}
         inputs['code'] = code
@@ -104,22 +102,23 @@ class STMWorkChain(WorkChain):
         
         atoms = structure.get_ase()  # slow
         n_atoms = len(atoms)
+        
+        spin_guess = None
+        if dft_params['uks']:
+            spin_guess = [dft_params['spin_up_guess'], dft_params['spin_dw_guess']]
 
-        # structure
-        tmpdir = tempfile.mkdtemp()
-        geom_fn = tmpdir + '/geom.xyz'
-        atoms.write(geom_fn)
-        geom_f = SinglefileData(file=geom_fn)
-        shutil.rmtree(tmpdir)
+        geom_f = cls.make_geom_file(
+            atoms, "geom.xyz", spin_guess
+        )
 
         inputs['file']['geom_coords'] = geom_f
         
-        cell_array = cell.get_array('cell')
+        cell = dft_params['cell']
 
         # parameters
-        cell_abc = "%f  %f  %f" % (cell_array[0],
-                                   cell_array[1],
-                                   cell_array[2])
+        cell_abc = "%f  %f  %f" % (cell[0],
+                                   cell[1],
+                                   cell[2])
         num_machines = 12
         if n_atoms > 500:
             num_machines = 27
@@ -131,11 +130,10 @@ class STMWorkChain(WorkChain):
             
         added_mos = np.max([100, int(n_atoms*emax/6.0)])
 
-        inp = cls.get_cp2k_input(cell_abc,
-                                 mgrid_cutoff,
+        inp = cls.get_cp2k_input(dft_params,
+                                 cell_abc,
                                  walltime*0.97,
                                  wfn_file,
-                                 elpa_switch,
                                  added_mos,
                                  atoms)
 
@@ -150,28 +148,61 @@ class STMWorkChain(WorkChain):
             "resources": {"num_machines": num_machines},
             "max_wallclock_seconds": walltime,
             "append_text": "cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
+            "parser_name": 'cp2k_advanced_parser',
         }
         if wfn_file_path != "":
             inputs['metadata']['options']["prepend_text"] = "cp %s ." % wfn_file_path
         
         return inputs
-
     # ==========================================================================
     @classmethod
-    def get_cp2k_input(cls, cell_abc, mgrid_cutoff, walltime, wfn_file, elpa_switch, added_mos, atoms):
+    def make_geom_file(cls, atoms, filename, spin_guess=None):
+        # spin_guess = [[spin_up_indexes], [spin_down_indexes]]
+        tmpdir = tempfile.mkdtemp()
+        file_path = tmpdir + "/" + filename
+
+        orig_file = StringIO()
+        atoms.write(orig_file, format='xyz')
+        orig_file.seek(0)
+        all_lines = orig_file.readlines()
+        comment = all_lines[1] # with newline character!
+        orig_lines = all_lines[2:]
+        
+        modif_lines = []
+        for i_line, line in enumerate(orig_lines):
+            new_line = line
+            lsp = line.split()
+            if spin_guess is not None:
+                if i_line in spin_guess[0]:
+                    new_line = lsp[0]+"1 " + " ".join(lsp[1:])+"\n"
+                if i_line in spin_guess[1]:
+                    new_line = lsp[0]+"2 " + " ".join(lsp[1:])+"\n"
+            modif_lines.append(new_line)
+        
+        final_str = "%d\n%s" % (len(atoms), comment) + "".join(modif_lines)
+
+        with open(file_path, 'w') as f:
+            f.write(final_str)
+        aiida_f = SinglefileData(file=file_path)
+        shutil.rmtree(tmpdir)
+        return aiida_f
+    
+    # ==========================================================================
+    @classmethod
+    def get_cp2k_input(cls, dft_params, cell_abc, walltime, wfn_file, added_mos, atoms):
 
         inp = {
             'GLOBAL': {
                 'RUN_TYPE': 'ENERGY',
                 'WALLTIME': '%d' % walltime,
-                'PRINT_LEVEL': 'LOW',
+                'PRINT_LEVEL': 'MEDIUM',
                 'EXTENDED_FFT_LENGTHS': ''
             },
-            'FORCE_EVAL': cls.get_force_eval_qs_dft(cell_abc,
-                                                    mgrid_cutoff, wfn_file, added_mos, atoms),
+            'FORCE_EVAL': cls.get_force_eval_qs_dft(dft_params, cell_abc,
+                                                    wfn_file, added_mos, atoms),
         }
         
-        if elpa_switch:
+        if dft_params['elpa_switch']:
             inp['GLOBAL']['PREFERRED_DIAG_LIBRARY'] = 'ELPA'
             inp['GLOBAL']['ELPA_KERNEL'] = 'AUTO'
             inp['GLOBAL']['DBCSR'] = {'USE_MPI_ALLOCATOR': '.FALSE.'}
@@ -180,7 +211,7 @@ class STMWorkChain(WorkChain):
 
     # ==========================================================================
     @classmethod
-    def get_force_eval_qs_dft(cls, cell_abc, mgrid_cutoff, wfn_file, added_mos, atoms):
+    def get_force_eval_qs_dft(cls, dft_params, cell_abc, wfn_file, added_mos, atoms):
         force_eval = {
             'METHOD': 'Quickstep',
             'DFT': {
@@ -193,7 +224,7 @@ class STMWorkChain(WorkChain):
                     'EPS_DEFAULT': '1.0E-14',
                 },
                 'MGRID': {
-                    'CUTOFF': '%d' % (mgrid_cutoff),
+                    'CUTOFF': '%d' % (dft_params['mgrid_cutoff']),
                     'NGRIDS': '5',
                 },
                 'SCF': {
@@ -239,6 +270,10 @@ class STMWorkChain(WorkChain):
                         'FILENAME': 'HART',
                         'STRIDE': '2 2 2',
                     },
+                    'E_DENSITY_CUBE': {
+                        'FILENAME': 'RHO',
+                        'STRIDE': '2 2 2',
+                    },
                 },
             },
             'SUBSYS': {
@@ -263,5 +298,29 @@ class STMWorkChain(WorkChain):
                 'BASIS_SET': common.ATOMIC_KIND_INFO[symbol]['basis'],
                 'POTENTIAL': common.ATOMIC_KIND_INFO[symbol]['pseudo'],
             })
-
+            
+        if dft_params['uks']:
+            force_eval['DFT']['UKS'] = ''
+            force_eval['DFT']['MULTIPLICITY'] = dft_params['multiplicity']
+            
+            spin_up_indexes = dft_params['spin_up_guess']
+            spin_dw_indexes = dft_params['spin_dw_guess']
+            
+            for i_s, spin_indexes in enumerate([spin_up_indexes, spin_dw_indexes]):
+                spin_digit = i_s + 1
+                a_nel =  1 if i_s == 0 else -1
+                b_nel = -1 if i_s == 0 else  1
+                used_kinds = np.unique([atoms.get_chemical_symbols()[i_s] for i_s in spin_indexes])
+                for symbol in used_kinds:
+                    force_eval['SUBSYS']['KIND'].append({
+                        '_': symbol+str(spin_digit),
+                        'ELEMENT': symbol,
+                        'BASIS_SET': common.ATOMIC_KIND_INFO[symbol]['basis'],
+                        'POTENTIAL': common.ATOMIC_KIND_INFO[symbol]['pseudo'],
+                        'BS': {
+                            'ALPHA': {'NEL': a_nel, 'L': 1, 'N': 2},
+                            'BETA':  {'NEL': b_nel, 'L': 1, 'N': 2},
+                        },
+                    })
+                
         return force_eval

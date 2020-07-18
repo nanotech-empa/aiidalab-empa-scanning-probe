@@ -113,10 +113,13 @@ class OrbitalWorkChain(WorkChain):
 
         inputs['file']['geom_coords'] = geom_f
         
+        bbox = common.get_bbox(atoms)
+        extra_space = 8.0 # angstrom
+        
         # parameters
-        cell_abc = "%f  %f  %f" % (dft_params['cell'][0],
-                                   dft_params['cell'][1],
-                                   dft_params['cell'][2])
+        cell_abc = "%f  %f  %f" % (2 * bbox[0] + extra_space,
+                                   2 * bbox[1] + extra_space,
+                                   2 * bbox[2] + extra_space)
         num_machines = 3
         if n_atoms > 50:
             num_machines = 6
@@ -230,6 +233,10 @@ class OrbitalWorkChain(WorkChain):
                     'CUTOFF': '%d' % (dft_params['mgrid_cutoff']),
                     'NGRIDS': '5',
                 },
+                'POISSON': {
+                    'PERIODIC': 'NONE',
+                    'PSOLVER': 'MT',
+                },
                 'SCF': {
                     'MAX_SCF': '1000',
                     'SCF_GUESS': 'RESTART',
@@ -274,7 +281,7 @@ class OrbitalWorkChain(WorkChain):
                         'STRIDE': '2 2 2',
                     },
                     'MO_CUBES': {
-                        'NHOMO': '1',
+                        'NHOMO': '5',
                         'NLUMO': '1',
                     },
                     'E_DENSITY_CUBE': {
@@ -283,7 +290,7 @@ class OrbitalWorkChain(WorkChain):
                 },
             },
             'SUBSYS': {
-                'CELL': {'ABC': cell_abc},
+                'CELL': {'ABC': cell_abc, 'PERIODIC': 'NONE'},
                 'TOPOLOGY': {
                     'COORD_FILE_NAME': 'geom.xyz',
                     'COORDINATE': 'xyz',
