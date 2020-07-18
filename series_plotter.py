@@ -204,7 +204,7 @@ class SeriesPlotter():
         self.selections_vbox.children += (boxed_row, )
     
     def remove_line_row(self, b):
-        rm_btn_list = [elem[3] for elem in self.elem_list]
+        rm_btn_list = [elem[4] for elem in self.elem_list]
         rm_index = rm_btn_list.index(b)
         del self.elem_list[rm_index]
         self.selections_vbox.children = remove_from_tuple(self.selections_vbox.children, rm_index)
