@@ -2,6 +2,7 @@
 import os
 import io
 import zipfile
+import copy
 
 import numpy as np
 
@@ -154,6 +155,16 @@ class SeriesPlotter():
             series_label = make_series_label(info, i_spin=spin)
             
             self.series[series_label] = (data, info, general_info)
+            
+            if info['type'] == 'const-height orbital':
+                sq_info = copy.deepcopy(info)
+                sq_info['type'] = 'const-height orbital^2'
+                sq_data = copy.deepcopy(data) ** 2
+                
+                series_label = make_series_label(sq_info, i_spin=spin)
+                self.series[series_label] = (sq_data, sq_info, general_info)
+                
+                
             
         x_arr = general_info['x_arr'] * 0.529177
         y_arr = general_info['y_arr'] * 0.529177
