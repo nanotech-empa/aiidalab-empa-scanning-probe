@@ -91,7 +91,7 @@ workchain_preproc_and_viewer_info = {
 }
 
 
-PREPROCESS_VERSION = 1.07
+PREPROCESS_VERSION = 1.08
 
 def preprocess_one(workcalc):
     """
@@ -121,13 +121,13 @@ def preprocess_one(workcalc):
     
     # ---
     # check if all specified files are retrieved
-    success = True
-    for rlps in prepoc_info_dict['retrieved_files']:
-        calc_step, retr_list = rlps
-        calc = list(reversed(workcalc.called))[calc_step]
-        retrieved_files = calc.outputs.retrieved.list_object_names()
-        if not all(f in retrieved_files for f in retr_list):
-            raise(Exception("Not all files were retrieved."))
+    #success = True
+    #for rlps in prepoc_info_dict['retrieved_files']:
+    #    calc_step, retr_list = rlps
+    #    calc = list(reversed(workcalc.called))[calc_step]
+    #    retrieved_files = calc.outputs.retrieved.list_object_names()
+    #    if not all(f in retrieved_files for f in retr_list):
+    #        raise(Exception("Not all files were retrieved."))
     # ---
     
     structure = workcalc.inputs[prepoc_info_dict['struct_label']]
