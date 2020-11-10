@@ -30,9 +30,9 @@ class AfmWorkChain(WorkChain):
         spec.input("cp2k_code", valid_type=Code)
         spec.input("structure", valid_type=StructureData)
         spec.input("cell", valid_type=ArrayData)
-        spec.input("mgrid_cutoff", valid_type=Int, default=Int(600))
-        spec.input("wfn_file_path", valid_type=Str, default=Str(""))
-        spec.input("elpa_switch", valid_type=Bool, default=Bool(True))
+        spec.input("mgrid_cutoff", valid_type=Int, default=lambda: Int(600))
+        spec.input("wfn_file_path", valid_type=Str, default=lambda: Str(""))
+        spec.input("elpa_switch", valid_type=Bool, default=lambda: Bool(True))
         
         spec.input("afm_pp_code", valid_type=Code)
         spec.input("afm_pp_params", valid_type=Dict)
