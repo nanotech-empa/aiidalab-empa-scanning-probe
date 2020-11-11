@@ -397,6 +397,7 @@ class SeriesPlotter():
                         ymin=self.extent[2],
                         ymax=self.extent[3],
                         ylabel='y [Angstroms]',
+                        name="'%s'" % plot_name,
                 )
                 zip_file.writestr("itx/"+plot_name+".itx", str(igorwave))
                 # ---------------------------------------------------
