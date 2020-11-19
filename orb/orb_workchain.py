@@ -114,7 +114,7 @@ class OrbitalWorkChain(WorkChain):
         inputs['file']['geom_coords'] = geom_f
         
         bbox = common.get_bbox(atoms)
-        extra_space = 8.0 # angstrom
+        extra_space = 15.0 # angstrom
         
         # parameters
         cell_abc = "%f  %f  %f" % (2 * bbox[0] + extra_space,
