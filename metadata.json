@@ -1,7 +1,8 @@
 {
-    "description": "Empa nanotech@surfaces Laboratory",
+    "description": "App to run scanning probe microscopy simulations.",
     "title": "Empa nanotech@surfaces Laboratory - Scanning Probe Microscopy",
-    "version": "1.1",
+    "version": "1.3",
     "logo": "miscellaneous/logos/empa.png",
-    "authors": "K. Eimre, F. Hillebrand"
+    "authors": "nanotech@surfaces laboratory, Empa",
+    "state": "stable"
 }
