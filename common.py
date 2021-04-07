@@ -27,7 +27,7 @@ ATOMIC_KIND_INFO = {
     'Ag':{'basis' : 'DZVP-MOLOPT-SR-GTH', 'pseudo' : 'GTH-PBE-q11'},
     'Cu':{'basis' : 'DZVP-MOLOPT-SR-GTH', 'pseudo' : 'GTH-PBE-q11'},
     'Al':{'basis' : 'DZVP-MOLOPT-SR-GTH', 'pseudo' : 'GTH-PBE-q3' },
-    'B' :{'basis' : 'TZV2P-MOLOPT-GTH'  , 'pseudo' : 'GTH-PBE-q1' },
+    'B' :{'basis' : 'DZVP-MOLOPT-SR-GTH', 'pseudo' : 'GTH-PBE-q3' },
     'Br':{'basis' : 'DZVP-MOLOPT-SR-GTH', 'pseudo' : 'GTH-PBE-q7' },
     'C' :{'basis' : 'TZV2P-MOLOPT-GTH'  , 'pseudo' : 'GTH-PBE-q4' },
     'Si':{'basis' : 'DZVP-MOLOPT-GTH'   , 'pseudo' : 'GTH-PBE-q4' },
