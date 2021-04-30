@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 
 from apps.scanning_probe import igor
 
+from aiida.orm import load_node
+
 colormaps = ['seismic', 'gist_heat']
 
 def remove_from_tuple(tup, index):
@@ -135,6 +137,9 @@ class SeriesPlotter():
         
         ### -------------------------------------------
         ### Creating a zip
+        
+        self.zip_filename = None
+        
         self.zip_btn = ipw.Button(description='Image zip', disabled=True)
         self.zip_btn.on_click(self.create_zip_link)
 
@@ -148,6 +153,40 @@ class SeriesPlotter():
             )
 
         self.link_out = ipw.Output()
+        
+        ### -------------------------------------------
+        ### Export to openbis
+        
+        self.openbis_btn = ipw.Button(description='Export to openBIS', disabled=True)
+        self.openbis_btn.on_click(self.export_zip_to_openbis)
+        
+        ### -------------------------------------------
+    
+    def _export_zip_to_openbis(self, zipfile_path, uuid, structure_uuid):
+        
+        # upload zipfile_path to openbis
+        
+        z = zipfile.ZipFile(zipfile_path, 'r')
+        
+        # parse through the files
+        for file in z.namelist():
+            if file.endswith('.png'):
+                f = z.open(file)
+                content = f.read()
+                with open('test.png', 'wb') as newf:
+                    newf.write(content)
+                break
+        
+    def export_zip_to_openbis(self, b):
+        
+        wc_node = load_node(self.wc_pk)
+        structure_node = wc_node.inputs.structure
+        
+        self._export_zip_to_openbis(
+            "tmp/"+self.zip_filename,
+            wc_node.uuid,
+            structure_node.uuid
+        )
         
 
     def add_series_collection(self, general_info, series_info, series_data):
@@ -304,7 +343,7 @@ class SeriesPlotter():
         
         self.zip_btn.disabled = True
         
-        filename = "%s_pk%d.zip" % (self.zip_prepend, self.wc_pk)
+        self.zip_filename = "%s_pk%d.zip" % (self.zip_prepend, self.wc_pk)
 
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED, False) as zip_file:
@@ -312,11 +351,13 @@ class SeriesPlotter():
 
         os.makedirs("tmp", exist_ok=True)
 
-        with open('tmp/'+filename, 'wb') as f:
+        with open('tmp/'+self.zip_filename, 'wb') as f:
             f.write(zip_buffer.getvalue())
 
         with self.link_out:
-            display(HTML('<a href="tmp/%s" target="_blank">download zip</a>' % filename))
+            display(HTML('<a href="tmp/%s" target="_blank">download zip</a>' % self.zip_filename))
+            
+        self.openbis_btn.disabled = False
         
     def data_to_zip(self, zip_file):
         
