@@ -11,6 +11,7 @@ from IPython.display import display, clear_output, HTML
 
 import matplotlib
 import matplotlib.pyplot as plt
+from aiida_openbis.utils import bisutils
 
 from apps.scanning_probe import igor
 
@@ -162,30 +163,11 @@ class SeriesPlotter():
         
         ### -------------------------------------------
     
-    def _export_zip_to_openbis(self, zipfile_path, uuid, structure_uuid):
         
-        # upload zipfile_path to openbis
-        
-        z = zipfile.ZipFile(zipfile_path, 'r')
-        
-        # parse through the files
-        for file in z.namelist():
-            if file.endswith('.png'):
-                f = z.open(file)
-                content = f.read()
-                with open('test.png', 'wb') as newf:
-                    newf.write(content)
-                break
-        
-    def export_zip_to_openbis(self, b):
-        
-        wc_node = load_node(self.wc_pk)
-        structure_node = wc_node.inputs.structure
-        
-        self._export_zip_to_openbis(
-            "tmp/"+self.zip_filename,
-            wc_node.uuid,
-            structure_node.uuid
+    def export_zip_to_openbis(self, b):        
+        export = bisutils.aiidalab_spm(
+            zip_path="tmp/"+self.zip_filename,
+            pk=self.wc_pk,
         )
         
 
