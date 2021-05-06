@@ -49,6 +49,7 @@ class STMWorkChain(WorkChain):
         self.report("Running CP2K diagonalization SCF")
         
         emax = float(self.inputs.stm_params.get_dict()['--energy_range'][1])
+        self.ctx.n_atoms = len(self.inputs.structure.sites)
 
         inputs = self.build_cp2k_inputs(self.inputs.structure,
                                         self.inputs.cp2k_code,
@@ -70,8 +71,11 @@ class STMWorkChain(WorkChain):
         inputs['code'] = self.inputs.stm_code
         inputs['parameters'] = self.inputs.stm_params
         inputs['parent_calc_folder'] = self.ctx.scf_diag.outputs.remote_folder
+        
+        n_machines = 6 if self.ctx.n_atoms < 2000 else 12
+        
         inputs['metadata']['options'] = {
-            "resources": {"num_machines": 6},
+            "resources": {"num_machines": n_machines},
             "max_wallclock_seconds": 21600,
         } 
         
@@ -122,6 +126,8 @@ class STMWorkChain(WorkChain):
         num_machines = 12
         if n_atoms > 500:
             num_machines = 27
+        if n_atoms > 2000:
+            num_machines = 48
         walltime = 72000
         
         wfn_file = ""
