@@ -49,6 +49,8 @@ class PdosWorkChain(WorkChain):
     def run_scfs(self):
         self.report("Running CP2K diagonalization SCF")
 
+        self.ctx.n_all_atoms = len(self.inputs.slabsys_structure.sites)
+        
         slab_inputs = self.build_slab_cp2k_inputs(
                         self.inputs.slabsys_structure,
                         self.inputs.pdos_lists,
@@ -81,8 +83,11 @@ class PdosWorkChain(WorkChain):
         inputs['parameters'] = self.inputs.overlap_params
         inputs['parent_slab_folder'] = self.ctx.slab_scf.outputs.remote_folder
         inputs['parent_mol_folder'] = self.ctx.mol_scf.outputs.remote_folder
+        
+        n_machines = 4 if self.ctx.n_all_atoms < 2000 else 8
+        
         inputs['metadata']['options'] = {
-            "resources": {"num_machines": 4, "num_mpiprocs_per_machine": 12},
+            "resources": {"num_machines": n_machines},
             "max_wallclock_seconds": 10600,
         } 
         
@@ -185,7 +190,7 @@ class PdosWorkChain(WorkChain):
                                    atoms.cell[1, 1],
                                    atoms.cell[2, 2])
         num_machines = 6
-        if len(atoms) > 150:
+        if len(atoms) > 100:
             num_machines = 12
         walltime = 72000
 
