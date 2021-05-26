@@ -125,6 +125,10 @@ class OrbitalWorkChain(WorkChain):
             num_machines = 6
         if n_atoms > 100:
             num_machines = 12
+        if n_atoms > 300:
+            num_machines = 27
+        if n_atoms > 650:
+            num_machines = 48
         walltime = 72000
         
         wfn_file = ""
