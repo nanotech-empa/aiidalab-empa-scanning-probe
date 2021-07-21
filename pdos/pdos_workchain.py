@@ -20,6 +20,7 @@ import os
 import tempfile
 import shutil
 import numpy as np
+import copy
 
 class PdosWorkChain(WorkChain):
 
@@ -31,20 +32,60 @@ class PdosWorkChain(WorkChain):
         spec.input("slabsys_structure", valid_type=StructureData)
         spec.input("mol_structure", valid_type=StructureData)
         spec.input("pdos_lists", valid_type=List)
-        spec.input("mgrid_cutoff", valid_type=Int, default=Int(600))
-        spec.input("wfn_file_path", valid_type=Str, default=Str(""))
-        spec.input("elpa_switch", valid_type=Bool, default=Bool(True))
+        spec.input("wfn_file_path", valid_type=Str, default=lambda: orm.Str(""))
+        
+        spec.input("dft_params", valid_type=Dict)
         
         spec.input("overlap_code", valid_type=Code)
         spec.input("overlap_params", valid_type=Dict)
         
         spec.outline(
+            cls.setup,
             cls.run_scfs,
             cls.run_overlap,
             cls.finalize,
         )
         
         spec.outputs.dynamic = True
+        
+        spec.exit_code(
+            390,
+            "ERROR_TERMINATION",
+            message="One or more steps of the work chain failed.",
+        )
+    
+    def setup(self):
+        # set up mol UKS parameters
+        
+        self.ctx.mol_dft_params = copy.deepcopy(self.inputs.dft_params.get_dict())
+        
+        self.ctx.mol_dft_params['elpa_switch'] = False # Elpa can cause problems with small systems
+        
+        if 'uks' in self.ctx.mol_dft_params and self.ctx.mol_dft_params['uks']:
+            slab_atoms = self.inputs.slabsys_structure.get_ase()
+            mol_atoms = self.inputs.mol_structure.get_ase()
+            
+            mol_at_tuples = [(e, *np.round(p, 2)) for e, p in zip(
+                mol_atoms.get_chemical_symbols(), mol_atoms.positions)]
+            
+            mol_spin_up = []
+            mol_spin_dw = []
+            
+            for i_up in self.ctx.mol_dft_params['spin_up_guess']:
+                at = slab_atoms[i_up]
+                at_tup = (at.symbol, *np.round(at.position, 2))
+                if at_tup in mol_at_tuples:
+                    mol_spin_up.append(mol_at_tuples.index(at_tup))
+            
+            for i_dw in self.ctx.mol_dft_params['spin_dw_guess']:
+                at = slab_atoms[i_dw]
+                at_tup = (at.symbol, *np.round(at.position, 2))
+                if at_tup in mol_at_tuples:
+                    mol_spin_dw.append(mol_at_tuples.index(at_tup))
+            
+            self.ctx.mol_dft_params['spin_up_guess'] = mol_spin_up
+            self.ctx.mol_dft_params['spin_dw_guess'] = mol_spin_dw
+            
     
     def run_scfs(self):
         self.report("Running CP2K diagonalization SCF")
@@ -55,9 +96,8 @@ class PdosWorkChain(WorkChain):
                         self.inputs.slabsys_structure,
                         self.inputs.pdos_lists,
                         self.inputs.cp2k_code,
-                        self.inputs.mgrid_cutoff,
                         self.inputs.wfn_file_path.value,
-                        self.inputs.elpa_switch)
+                        self.inputs.dft_params.get_dict())
         self.report("slab_inputs: "+str(slab_inputs))
         
         slab_future = self.submit(Cp2kCalculation, **slab_inputs)
@@ -66,14 +106,20 @@ class PdosWorkChain(WorkChain):
         mol_inputs = self.build_mol_cp2k_inputs(
                         self.inputs.mol_structure,
                         self.inputs.cp2k_code,
-                        self.inputs.mgrid_cutoff,
-                        elpa_switch = False) # Elpa can cause problems with small systems
+                        self.ctx.mol_dft_params)
         self.report("mol_inputs: "+str(mol_inputs))
         
         mol_future = self.submit(Cp2kCalculation, **mol_inputs)
         self.to_context(mol_scf=mol_future)        
            
     def run_overlap(self):
+        
+        if not common.check_if_calc_ok(self, self.ctx.slab_scf):
+            return self.exit_codes.ERROR_TERMINATION
+        
+        if not common.check_if_calc_ok(self, self.ctx.mol_scf):
+            return self.exit_codes.ERROR_TERMINATION
+        
         self.report("Running overlap")
              
         inputs = {}
@@ -106,7 +152,7 @@ class PdosWorkChain(WorkChain):
      # ==========================================================================
     @classmethod
     def build_slab_cp2k_inputs(cls, structure, pdos_lists, code,
-                          mgrid_cutoff, wfn_file_path, elpa_switch):
+                          wfn_file_path, dft_params):
 
         inputs = {}
         inputs['metadata'] = {}
@@ -114,14 +160,17 @@ class PdosWorkChain(WorkChain):
         inputs['code'] = code
         inputs['file'] = {}
         
+        
         atoms = structure.get_ase()  # slow
+        n_atoms = len(atoms)
+        
+        spin_guess = None
+        if dft_params['uks']:
+            spin_guess = [dft_params['spin_up_guess'], dft_params['spin_dw_guess']]
 
-        # structure
-        tmpdir = tempfile.mkdtemp()
-        geom_fn = tmpdir + '/geom.xyz'
-        atoms.write(geom_fn)
-        geom_f = SinglefileData(file=geom_fn)
-        shutil.rmtree(tmpdir)
+        geom_f = common.make_geom_file(
+            atoms, "geom.xyz", spin_guess
+        )
 
         inputs['file']['geom_coords'] = geom_f
 
@@ -129,8 +178,10 @@ class PdosWorkChain(WorkChain):
         cell_abc = "%f  %f  %f" % (atoms.cell[0, 0],
                                    atoms.cell[1, 1],
                                    atoms.cell[2, 2])
-        num_machines = 27
-        if len(atoms) > 1500:
+        num_machines = 12
+        if n_atoms > 500:
+            num_machines = 27
+        if n_atoms > 2000:
             num_machines = 48
         walltime = 72000
         
@@ -138,11 +189,10 @@ class PdosWorkChain(WorkChain):
         if wfn_file_path != "":
             wfn_file = os.path.basename(wfn_file_path)
 
-        inp = cls.get_cp2k_input(cell_abc,
-                                 mgrid_cutoff,
+        inp = cls.get_cp2k_input(dft_params,
+                                 cell_abc,
                                  walltime*0.97,
                                  wfn_file,
-                                 elpa_switch,
                                  atoms,
                                  pdos_lists)
 
@@ -157,6 +207,7 @@ class PdosWorkChain(WorkChain):
             "resources": {"num_machines": num_machines},
             "max_wallclock_seconds": walltime,
             "append_text": "cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
+            "parser_name": "cp2k_advanced_parser",
         }
         if wfn_file_path != "":
             inputs['metadata']['options']["prepend_text"] = "cp %s ." % wfn_file_path
@@ -165,23 +216,24 @@ class PdosWorkChain(WorkChain):
     
     # ==========================================================================
     @classmethod
-    def build_mol_cp2k_inputs(cls, structure, code,
-                          mgrid_cutoff, elpa_switch):
+    def build_mol_cp2k_inputs(cls, structure, code, dft_params):
 
         inputs = {}
         inputs['metadata'] = {}
         inputs['metadata']['label'] = "mol_scf"
         inputs['code'] = code
         inputs['file'] = {}
-        
+                
         atoms = structure.get_ase()  # slow
+        n_atoms = len(atoms)
+        
+        spin_guess = None
+        if dft_params['uks']:
+            spin_guess = [dft_params['spin_up_guess'], dft_params['spin_dw_guess']]
 
-        # structure
-        tmpdir = tempfile.mkdtemp()
-        geom_fn = tmpdir + '/geom.xyz'
-        atoms.write(geom_fn)
-        geom_f = SinglefileData(file=geom_fn)
-        shutil.rmtree(tmpdir)
+        geom_f = common.make_geom_file(
+            atoms, "geom.xyz", spin_guess
+        )
 
         inputs['file']['geom_coords'] = geom_f
 
@@ -194,11 +246,10 @@ class PdosWorkChain(WorkChain):
             num_machines = 12
         walltime = 72000
 
-        inp = cls.get_cp2k_input(cell_abc,
-                                 mgrid_cutoff,
+        inp = cls.get_cp2k_input(dft_params,
+                                 cell_abc,
                                  walltime*0.97,
                                  "",
-                                 elpa_switch,
                                  atoms)
 
         inputs['parameters'] = Dict(dict=inp)
@@ -212,26 +263,27 @@ class PdosWorkChain(WorkChain):
             "resources": {"num_machines": num_machines},
             "max_wallclock_seconds": walltime,
             "append_text": "cp $CP2K_DATA_DIR/BASIS_MOLOPT .",
+            "parser_name": "cp2k_advanced_parser",
         }
         
         return inputs
 
     # ==========================================================================
     @classmethod
-    def get_cp2k_input(cls, cell_abc, mgrid_cutoff, walltime, wfn_file, elpa_switch, atoms, pdos_lists=None):
+    def get_cp2k_input(cls, dft_params, cell_abc, walltime, wfn_file, atoms, pdos_lists=None):
 
         inp = {
             'GLOBAL': {
                 'RUN_TYPE': 'ENERGY',
                 'WALLTIME': '%d' % walltime,
-                'PRINT_LEVEL': 'LOW',
+                'PRINT_LEVEL': 'MEDIUM',
                 'EXTENDED_FFT_LENGTHS': ''
             },
-            'FORCE_EVAL': cls.get_force_eval_qs_dft(cell_abc,
-                                                    mgrid_cutoff, wfn_file, atoms, pdos_lists),
+            'FORCE_EVAL': cls.get_force_eval_qs_dft(dft_params, cell_abc,
+                                                    wfn_file, atoms, pdos_lists),
         }
         
-        if elpa_switch:
+        if dft_params['elpa_switch']:
             inp['GLOBAL']['PREFERRED_DIAG_LIBRARY'] = 'ELPA'
             inp['GLOBAL']['ELPA_KERNEL'] = 'AUTO'
             inp['GLOBAL']['DBCSR'] = {'USE_MPI_ALLOCATOR': '.FALSE.'}
@@ -240,7 +292,7 @@ class PdosWorkChain(WorkChain):
 
     # ==========================================================================
     @classmethod
-    def get_force_eval_qs_dft(cls, cell_abc, mgrid_cutoff, wfn_file, atoms, pdos_lists=None):
+    def get_force_eval_qs_dft(cls, dft_params, cell_abc, wfn_file, atoms, pdos_lists=None):
         force_eval = {
             'METHOD': 'Quickstep',
             'DFT': {
@@ -254,7 +306,7 @@ class PdosWorkChain(WorkChain):
                     'EPS_DEFAULT': '1.0E-14',
                 },
                 'MGRID': {
-                    'CUTOFF': '%d' % (mgrid_cutoff),
+                    'CUTOFF': '%d' % (dft_params['mgrid_cutoff']),
                     'NGRIDS': '5',
                 },
                 'SCF': {
@@ -268,7 +320,7 @@ class PdosWorkChain(WorkChain):
                     },
                     'SMEAR': {
                         'METHOD': 'FERMI_DIRAC',
-                        'ELECTRONIC_TEMPERATURE': '300',
+                        'ELECTRONIC_TEMPERATURE': '100',
                     },
                     'MIXING': {
                         'METHOD': 'BROYDEN_MIXING',
@@ -300,6 +352,10 @@ class PdosWorkChain(WorkChain):
                         'FILENAME': 'HART',
                         'STRIDE': '4 4 4',
                     },
+                    'E_DENSITY_CUBE': {
+                        'FILENAME': 'RHO',
+                        'STRIDE': '2 2 2',
+                    },
                 },
             },
             'SUBSYS': {
@@ -329,5 +385,29 @@ class PdosWorkChain(WorkChain):
                 'BASIS_SET': common.ATOMIC_KIND_INFO[symbol]['basis'],
                 'POTENTIAL': common.ATOMIC_KIND_INFO[symbol]['pseudo'],
             })
-
+        
+        if dft_params['uks']:
+            force_eval['DFT']['UKS'] = ''
+            force_eval['DFT']['MULTIPLICITY'] = dft_params['multiplicity']
+            
+            spin_up_indexes = dft_params['spin_up_guess']
+            spin_dw_indexes = dft_params['spin_dw_guess']
+            
+            for i_s, spin_indexes in enumerate([spin_up_indexes, spin_dw_indexes]):
+                spin_digit = i_s + 1
+                a_nel =  1 if i_s == 0 else -1
+                b_nel = -1 if i_s == 0 else  1
+                used_kinds = np.unique([atoms.get_chemical_symbols()[i_s] for i_s in spin_indexes])
+                for symbol in used_kinds:
+                    force_eval['SUBSYS']['KIND'].append({
+                        '_': symbol+str(spin_digit),
+                        'ELEMENT': symbol,
+                        'BASIS_SET': common.ATOMIC_KIND_INFO[symbol]['basis'],
+                        'POTENTIAL': common.ATOMIC_KIND_INFO[symbol]['pseudo'],
+                        'BS': {
+                            'ALPHA': {'NEL': a_nel, 'L': 1, 'N': 2},
+                            'BETA':  {'NEL': b_nel, 'L': 1, 'N': 2},
+                        },
+                    })
+                    
         return force_eval
