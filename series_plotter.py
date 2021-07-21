@@ -63,6 +63,11 @@ def make_series_label(info, i_spin=None):
         label = 'ch-orb^2 h=%.1f' % info['height']
     elif info['type'] == 'const-isovalue orbital^2':
         label = 'cc-orb^2 isov=%.0e' % info['isovalue']
+        
+    elif info['type'] == 'const-height orbital sts':
+        label = 'ch-orb^2 h=%.1f' % info['height']
+    elif info['type'] == 'const-isovalue orbital sts':
+        label = 'cc-orb^2 isov=%.0e' % info['isovalue']
     else:
         print("No support for: " + str(info))
         

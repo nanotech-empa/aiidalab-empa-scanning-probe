@@ -6,6 +6,7 @@ from aiida.orm import WorkChainNode
 from aiida.orm import load_node
 
 from aiida.orm.querybuilder import QueryBuilder
+from aiida.orm import SinglefileData
 from aiida.orm import Code, Computer
 from aiida.engine import CalcJob
 
@@ -15,6 +16,10 @@ from collections import OrderedDict
 
 import numpy as np
 import ase
+
+from io import StringIO, BytesIO
+import tempfile
+import shutil
 
 ### ----------------------------------------------------------------
 ### ----------------------------------------------------------------
@@ -331,3 +336,56 @@ def get_bbox(ase_atoms):
     cy =np.amax(ase_atoms.positions[:,1]) - np.amin(ase_atoms.positions[:,1])
     cz =np.amax(ase_atoms.positions[:,2]) - np.amin(ase_atoms.positions[:,2])
     return np.array([cx, cy, cz])
+
+def make_geom_file(atoms, filename, spin_guess=None):
+        # spin_guess = [[spin_up_indexes], [spin_down_indexes]]
+        tmpdir = tempfile.mkdtemp()
+        file_path = tmpdir + "/" + filename
+
+        orig_file = StringIO()
+        atoms.write(orig_file, format='xyz')
+        orig_file.seek(0)
+        all_lines = orig_file.readlines()
+        comment = all_lines[1] # with newline character!
+        orig_lines = all_lines[2:]
+        
+        modif_lines = []
+        for i_line, line in enumerate(orig_lines):
+            new_line = line
+            lsp = line.split()
+            if spin_guess is not None:
+                if i_line in spin_guess[0]:
+                    new_line = lsp[0]+"1 " + " ".join(lsp[1:])+"\n"
+                if i_line in spin_guess[1]:
+                    new_line = lsp[0]+"2 " + " ".join(lsp[1:])+"\n"
+            modif_lines.append(new_line)
+        
+        final_str = "%d\n%s" % (len(atoms), comment) + "".join(modif_lines)
+
+        with open(file_path, 'w') as f:
+            f.write(final_str)
+        aiida_f = SinglefileData(file=file_path)
+        shutil.rmtree(tmpdir)
+        return aiida_f
+
+def check_if_calc_ok(self_, prev_calc):
+    """Checks if a calculation finished well.
+
+    Args:
+        self_: The workchain instance, used for reporting.
+        prev_calc (CalcNode): a calculation step
+
+    Returns:
+        Bool: True if workchain can continue, False otherwise
+    """
+    if not prev_calc.is_finished_ok:
+        if prev_calc.is_excepted:
+            self_.report("ERROR: previous step excepted.")
+            return False
+        if prev_calc.exit_status is not None and prev_calc.exit_status >= 500:
+            self_.report("Warning: previous step: " + prev_calc.exit_message)
+        else:
+            self_.report("ERROR: previous step: " + prev_calc.exit_message)
+            return False
+
+    return True
