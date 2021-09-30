@@ -1,9 +1,0 @@
-{
-    "description": "App to run scanning probe microscopy simulations.",
-    "title": "Empa nanotech@surfaces Laboratory - Scanning Probe Microscopy",
-    "exteral_url": "https://github.com/nanotech-empa/aiidalab-empa-scanning-probe",
-    "version": "1.5.0",
-    "logo": "miscellaneous/logos/empa.png",
-    "authors": "nanotech@surfaces laboratory, Empa",
-    "state": "stable"
-}
