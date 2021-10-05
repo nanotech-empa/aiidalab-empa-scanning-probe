@@ -272,10 +272,19 @@ def get_slab_calc_info(struct_node):
         html = ""
     return html
 
-def does_remote_file_exist(hostname, path):
-    ssh_cmd="ssh "+hostname+" if [ -f "+path+" ]; then echo 1 ; else echo 0 ; fi"
-    f_exists = subprocess.check_output(ssh_cmd.split())
-    if f_exists.decode()[0] != '1':
+def does_remote_file_exist(computer, path):
+    ssh_config = computer.get_configuration()
+    ssh_cmd = ["ssh"]
+    if 'proxy_command' in ssh_config:
+        ssh_cmd += ["-o", f"ProxyCommand={ssh_config['proxy_command']}"]
+    hostname = ""
+    if 'username' in ssh_config:
+        hostname += f"{ssh_config['username']}@"
+    hostname += f"{computer.hostname}"
+    ssh_cmd += [hostname]
+    ssh_cmd += [f"if [ -f {path} ]; then echo 1 ; else echo 0 ; fi"]
+    f_exists = subprocess.check_output(ssh_cmd).decode()
+    if f_exists[0] != '1':
         return False
     return True
     
@@ -293,7 +302,7 @@ def find_struct_wf(structure_node, computer):
                 if cp2k_scf_calc.computer.hostname == computer.hostname:
                     wfn_path = cp2k_scf_calc.outputs.remote_folder.get_remote_path() + "/aiida-RESTART.wfn"
                     # check if it exists
-                    file_exists = does_remote_file_exist(computer.hostname, wfn_path)
+                    file_exists = does_remote_file_exist(computer, wfn_path)
                     if file_exists:
                         print("Found .wfn from %s"%ex_k)
                         return wfn_path
@@ -309,7 +318,7 @@ def find_struct_wf(structure_node, computer):
             if geo_comp is not None and geo_comp.hostname == computer.hostname:
                 wfn_path = geo_opt_calc.outputs.remote_folder.get_remote_path() + "/aiida-RESTART.wfn"
                 # check if it exists
-                file_exists = does_remote_file_exist(computer.hostname, wfn_path)
+                file_exists = does_remote_file_exist(computer, wfn_path)
                 if file_exists:
                     print("Found .wfn from geo_opt")
                     return wfn_path
