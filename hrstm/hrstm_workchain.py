@@ -99,7 +99,7 @@ class HRSTMWorkChain(WorkChain):
         inputs['parent_calc_folder'] = self.ctx.scf_diag.outputs.remote_folder
         inputs['ppm_calc_folder'] = self.ctx.ppm.outputs.remote_folder
         inputs['metadata']['options'] = {
-            "resources": {"num_machines": 8, 'num_cores_per_machine': 1},
+            "resources": {"num_machines": 8, 'num_mpiprocs_per_machine': 1},
             "max_wallclock_seconds": 72000, # 20:00 hours
         }
 
