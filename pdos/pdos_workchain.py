@@ -183,7 +183,7 @@ class PdosWorkChain(WorkChain):
             num_machines = 27
         if n_atoms > 2000:
             num_machines = 48
-        walltime = 72000
+        walltime = 86000
         
         wfn_file = ""
         if wfn_file_path != "":
@@ -241,10 +241,10 @@ class PdosWorkChain(WorkChain):
         cell_abc = "%f  %f  %f" % (atoms.cell[0, 0],
                                    atoms.cell[1, 1],
                                    atoms.cell[2, 2])
-        num_machines = 6
-        if len(atoms) > 100:
-            num_machines = 12
-        walltime = 72000
+        num_machines = 12
+        if len(atoms) > 200:
+            num_machines = 27
+        walltime = 86000
 
         inp = cls.get_cp2k_input(dft_params,
                                  cell_abc,
