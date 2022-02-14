@@ -320,7 +320,7 @@ class PdosWorkChain(WorkChain):
                     },
                     'SMEAR': {
                         'METHOD': 'FERMI_DIRAC',
-                        'ELECTRONIC_TEMPERATURE': '100',
+                        'ELECTRONIC_TEMPERATURE': str(dft_params['smear_temperature']),
                     },
                     'MIXING': {
                         'METHOD': 'BROYDEN_MIXING',
