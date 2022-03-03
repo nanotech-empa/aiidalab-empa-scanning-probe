@@ -1,7 +1,3 @@
-
-#from aiida.orm.calculation.work import WorkCalculation
-#from aiida.engine import CalcJob
-
 from aiida.orm import WorkChainNode
 from aiida.orm import load_node
 
@@ -21,10 +17,10 @@ from io import StringIO, BytesIO
 import tempfile
 import shutil
 
-### ----------------------------------------------------------------
-### ----------------------------------------------------------------
-### ----------------------------------------------------------------
-### BS & PP
+# ## ----------------------------------------------------------------
+# ## ----------------------------------------------------------------
+# ## ----------------------------------------------------------------
+# ## BS & PP
 
 ATOMIC_KIND_INFO = {
     'H' :{'basis' : 'TZV2P-MOLOPT-GTH'   , 'pseudo' : 'GTH-PBE-q1'   }, #1
@@ -36,6 +32,7 @@ ATOMIC_KIND_INFO = {
     'Si':{'basis' : 'DZVP-MOLOPT-GTH'    , 'pseudo' : 'GTH-PBE-q4'   }, #14
     'S' :{'basis' : 'TZV2P-MOLOPT-GTH'   , 'pseudo' : 'GTH-PBE-q6'   }, #16
     'Cl':{'basis' : 'TZV2P-MOLOPT-GTH'   , 'pseudo' : 'GTH-PBE-q7'   }, #17
+    'Co':{'basis' : 'DZVP-MOLOPT-SR-GTH' , 'pseudo' : 'GTH-PBE-q17'  }, #27
     'Cu':{'basis' : 'DZVP-MOLOPT-SR-GTH' , 'pseudo' : 'GTH-PBE-q11'  }, #29
     'Zn':{'basis' : 'DZVP-MOLOPT-SR-GTH' , 'pseudo' : 'GTH-PBE-q12'  }, #30
     'Ga':{'basis' : 'DZVP-MOLOPT-SR-GTH' , 'pseudo' : 'GTH-PBE-q13'  }, #31
@@ -44,11 +41,11 @@ ATOMIC_KIND_INFO = {
     'Ag':{'basis' : 'DZVP-MOLOPT-SR-GTH' , 'pseudo' : 'GTH-PBE-q11'  }, #47
     'Au':{'basis' : 'DZVP-MOLOPT-SR-GTH' , 'pseudo' : 'GTH-PBE-q11'  }, #79 
 }
-    
-### ----------------------------------------------------------------
-### ----------------------------------------------------------------
-### ----------------------------------------------------------------
-### Preprocessing and viewer links
+
+# ## ----------------------------------------------------------------
+# ## ----------------------------------------------------------------
+# ## ----------------------------------------------------------------
+# ## Preprocessing and viewer links
 
 # This code and the way it's processed is to support
 # multiple pre/postprocess versions of the same calculation
@@ -151,7 +148,7 @@ def preprocess_one(workcalc):
                 continue
             break
     structure.set_extra('%s_%d_pk'% (workcalc_name, nr), workcalc.pk)
-    
+
 
 def preprocess_spm_calcs(workchain_list = ['STMWorkChain', 'PdosWorkChain', 'AfmWorkChain', 'OrbitalWorkChain']):
     qb = QueryBuilder()
@@ -228,12 +225,12 @@ def create_viewer_link_html(structure_extras, apps_path):
             apps_path + viewer_path, spm_pk, link_name, nr)
         
     return calc_links_str
-    
-    
-### ----------------------------------------------------------------
-### ----------------------------------------------------------------
-### ----------------------------------------------------------------
-### Misc
+
+
+# ## ----------------------------------------------------------------
+# ## ----------------------------------------------------------------
+# ## ----------------------------------------------------------------
+# ## Misc
 
 def get_calc_by_label(workcalc, label):
     qb = QueryBuilder()
@@ -287,7 +284,7 @@ def does_remote_file_exist(computer, path):
     if f_exists[0] != '1':
         return False
     return True
-    
+
 def find_struct_wf(structure_node, computer):
     # check spm
     extras = structure_node.extras
