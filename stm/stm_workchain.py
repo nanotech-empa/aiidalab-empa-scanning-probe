@@ -284,6 +284,9 @@ class STMWorkChain(WorkChain):
                 spin_digit = i_s + 1
                 a_nel =  1 if i_s == 0 else -1
                 b_nel = -1 if i_s == 0 else  1
+                
+                magn = 1.0 if i_s == 0 else -1.0
+                
                 used_kinds = np.unique([atoms.get_chemical_symbols()[i_s] for i_s in spin_indexes])
                 for symbol in used_kinds:
                     force_eval['SUBSYS']['KIND'].append({
@@ -291,10 +294,11 @@ class STMWorkChain(WorkChain):
                         'ELEMENT': symbol,
                         'BASIS_SET': common.ATOMIC_KIND_INFO[symbol]['basis'],
                         'POTENTIAL': common.ATOMIC_KIND_INFO[symbol]['pseudo'],
-                        'BS': {
-                            'ALPHA': {'NEL': a_nel, 'L': 1, 'N': 2},
-                            'BETA':  {'NEL': b_nel, 'L': 1, 'N': 2},
-                        },
+                        #'BS': {
+                        #    'ALPHA': {'NEL': a_nel, 'L': 1, 'N': 2},
+                        #    'BETA':  {'NEL': b_nel, 'L': 1, 'N': 2},
+                        #},
+                        'MAGNETIZATION': magn,
                     })
                 
         return force_eval
