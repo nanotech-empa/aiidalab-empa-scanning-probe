@@ -72,11 +72,15 @@ class STMWorkChain(WorkChain):
         inputs['parameters'] = self.inputs.stm_params
         inputs['parent_calc_folder'] = self.ctx.scf_diag.outputs.remote_folder
         
-        n_machines = 6 if self.ctx.n_atoms < 2000 else 12
+        n_machines = 6
+        if self.ctx.n_atoms > 1000:
+            n_machines = 12
+        if self.ctx.n_atoms > 2000:
+            n_machines = 18
         
         inputs['metadata']['options'] = {
             "resources": {"num_machines": n_machines},
-            "max_wallclock_seconds": 21600,
+            "max_wallclock_seconds": 36000,
         } 
         
         # Need to make an explicit instance for the node to be stored to aiida
