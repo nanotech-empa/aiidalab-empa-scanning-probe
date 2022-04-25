@@ -23,23 +23,92 @@ import shutil
 # ## BS & PP
 
 ATOMIC_KIND_INFO = {
-    'H' :{'basis' : 'TZV2P-MOLOPT-GTH'   , 'pseudo' : 'GTH-PBE-q1'   }, #1
-    'B' :{'basis' : 'DZVP-MOLOPT-SR-GTH' , 'pseudo' : 'GTH-PBE-q3'   }, #5
-    'C' :{'basis' : 'TZV2P-MOLOPT-GTH'   , 'pseudo' : 'GTH-PBE-q4'   }, #6
-    'N' :{'basis' : 'TZV2P-MOLOPT-GTH'   , 'pseudo' : 'GTH-PBE-q5'   }, #7
-    'O' :{'basis' : 'TZV2P-MOLOPT-GTH'   , 'pseudo' : 'GTH-PBE-q6'   }, #8
-    'Al':{'basis' : 'DZVP-MOLOPT-SR-GTH' , 'pseudo' : 'GTH-PBE-q3'   }, #13
-    'Si':{'basis' : 'DZVP-MOLOPT-GTH'    , 'pseudo' : 'GTH-PBE-q4'   }, #14
-    'S' :{'basis' : 'TZV2P-MOLOPT-GTH'   , 'pseudo' : 'GTH-PBE-q6'   }, #16
-    'Cl':{'basis' : 'TZV2P-MOLOPT-GTH'   , 'pseudo' : 'GTH-PBE-q7'   }, #17
-    'Co':{'basis' : 'DZVP-MOLOPT-SR-GTH' , 'pseudo' : 'GTH-PBE-q17'  }, #27
-    'Cu':{'basis' : 'DZVP-MOLOPT-SR-GTH' , 'pseudo' : 'GTH-PBE-q11'  }, #29
-    'Zn':{'basis' : 'DZVP-MOLOPT-SR-GTH' , 'pseudo' : 'GTH-PBE-q12'  }, #30
-    'Ga':{'basis' : 'DZVP-MOLOPT-SR-GTH' , 'pseudo' : 'GTH-PBE-q13'  }, #31
-    'Br':{'basis' : 'DZVP-MOLOPT-SR-GTH' , 'pseudo' : 'GTH-PBE-q7'   }, #35
-    'Pd':{'basis' : 'DZVP-MOLOPT-SR-GTH' , 'pseudo' : 'GTH-PBE-q18'  }, #46
-    'Ag':{'basis' : 'DZVP-MOLOPT-SR-GTH' , 'pseudo' : 'GTH-PBE-q11'  }, #47
-    'Au':{'basis' : 'DZVP-MOLOPT-SR-GTH' , 'pseudo' : 'GTH-PBE-q11'  }, #79 
+    'H':  {'basis': 'TZV2P-MOLOPT-GTH',        'pseudo': 'GTH-PBE-q1' },
+    'He': {'basis': 'DZVP-MOLOPT-SR-GTH-q2',   'pseudo': 'GTH-PBE-q2' },
+    'Li': {'basis': 'DZVP-MOLOPT-SR-GTH-q3',   'pseudo': 'GTH-PBE-q3' },
+    'Be': {'basis': 'DZVP-MOLOPT-SR-GTH-q4',   'pseudo': 'GTH-PBE-q4' },
+    'B':  {'basis': 'DZVP-MOLOPT-SR-GTH-q3',   'pseudo': 'GTH-PBE-q3' },
+    'C':  {'basis': 'TZV2P-MOLOPT-GTH',        'pseudo': 'GTH-PBE-q4' },
+    'N':  {'basis': 'TZV2P-MOLOPT-GTH',        'pseudo': 'GTH-PBE-q5' },
+    'O':  {'basis': 'TZV2P-MOLOPT-GTH',        'pseudo': 'GTH-PBE-q6' },
+    'F':  {'basis': 'DZVP-MOLOPT-SR-GTH-q7',   'pseudo': 'GTH-PBE-q7' },
+    'Ne': {'basis': 'DZVP-MOLOPT-SR-GTH-q8',   'pseudo': 'GTH-PBE-q8' },
+    'Na': {'basis': 'DZVP-MOLOPT-SR-GTH-q9',   'pseudo': 'GTH-PBE-q9' },
+    'Mg': {'basis': 'DZVP-MOLOPT-SR-GTH-q2',   'pseudo': 'GTH-PBE-q2' },
+    'Al': {'basis': 'DZVP-MOLOPT-SR-GTH',      'pseudo': 'GTH-PBE-q3' },
+    'Si': {'basis': 'DZVP-MOLOPT-SR-GTH-q4',   'pseudo': 'GTH-PBE-q4' },
+    'P':  {'basis': 'DZVP-MOLOPT-SR-GTH-q5',   'pseudo': 'GTH-PBE-q5' },
+    'S':  {'basis': 'TZV2P-MOLOPT-GTH',        'pseudo': 'GTH-PBE-q6' },
+    'Cl': {'basis': 'TZV2P-MOLOPT-GTH',        'pseudo': 'GTH-PBE-q7' },
+    'Ar': {'basis': 'DZVP-MOLOPT-SR-GTH-q8',   'pseudo': 'GTH-PBE-q8' },
+    'K':  {'basis': 'DZVP-MOLOPT-SR-GTH-q9',   'pseudo': 'GTH-PBE-q9' },
+    'Ca': {'basis': 'DZVP-MOLOPT-SR-GTH-q10',  'pseudo': 'GTH-PBE-q10' },
+    'Sc': {'basis': 'DZVP-MOLOPT-SR-GTH-q11',  'pseudo': 'GTH-PBE-q11' },
+    'Ti': {'basis': 'DZVP-MOLOPT-SR-GTH-q12',  'pseudo': 'GTH-PBE-q12' },
+    'V':  {'basis': 'DZVP-MOLOPT-SR-GTH-q13',  'pseudo': 'GTH-PBE-q13' },
+    'Cr': {'basis': 'DZVP-MOLOPT-SR-GTH-q14',  'pseudo': 'GTH-PBE-q14' },
+    'Mn': {'basis': 'DZVP-MOLOPT-SR-GTH-q15',  'pseudo': 'GTH-PBE-q15' },
+    'Fe': {'basis': 'TZV2P-MOLOPT-SR-GTH-q16', 'pseudo': 'GTH-PBE-q16' },
+    'Co': {'basis': 'DZVP-MOLOPT-SR-GTH-q17',  'pseudo': 'GTH-PBE-q17' },
+    'Ni': {'basis': 'DZVP-MOLOPT-SR-GTH-q18',  'pseudo': 'GTH-PBE-q18' },
+    'Cu': {'basis': 'DZVP-MOLOPT-SR-GTH-q11',  'pseudo': 'GTH-PBE-q11' },
+    'Zn': {'basis': 'DZVP-MOLOPT-SR-GTH-q12',  'pseudo': 'GTH-PBE-q12' },
+    'Ga': {'basis': 'DZVP-MOLOPT-SR-GTH-q13',  'pseudo': 'GTH-PBE-q13' },
+    'Ge': {'basis': 'DZVP-MOLOPT-SR-GTH-q4',   'pseudo': 'GTH-PBE-q4' },
+    'As': {'basis': 'DZVP-MOLOPT-SR-GTH-q5',   'pseudo': 'GTH-PBE-q5' },
+    'Se': {'basis': 'DZVP-MOLOPT-SR-GTH-q6',   'pseudo': 'GTH-PBE-q6' },
+    'Br': {'basis': 'DZVP-MOLOPT-SR-GTH-q7',   'pseudo': 'GTH-PBE-q7' },
+    'Kr': {'basis': 'DZVP-MOLOPT-SR-GTH-q8',   'pseudo': 'GTH-PBE-q8' },
+    'Rb': {'basis': 'DZVP-MOLOPT-SR-GTH-q9',   'pseudo': 'GTH-PBE-q9' },
+    'Sr': {'basis': 'DZVP-MOLOPT-SR-GTH-q10',  'pseudo': 'GTH-PBE-q10' },
+    'Y':  {'basis': 'DZVP-MOLOPT-SR-GTH-q11',  'pseudo': 'GTH-PBE-q11' },
+    'Zr': {'basis': 'DZVP-MOLOPT-SR-GTH-q12',  'pseudo': 'GTH-PBE-q12' },
+    'Nb': {'basis': 'DZVP-MOLOPT-SR-GTH-q13',  'pseudo': 'GTH-PBE-q13' },
+    'Mo': {'basis': 'DZVP-MOLOPT-SR-GTH-q14',  'pseudo': 'GTH-PBE-q14' },
+    'Tc': {'basis': 'DZVP-MOLOPT-SR-GTH-q15',  'pseudo': 'GTH-PBE-q15' },
+    'Ru': {'basis': 'DZVP-MOLOPT-SR-GTH-q16',  'pseudo': 'GTH-PBE-q16' },
+    'Rh': {'basis': 'DZVP-MOLOPT-SR-GTH-q9',   'pseudo': 'GTH-PBE-q9' },
+    'Pd': {'basis': 'DZVP-MOLOPT-SR-GTH-q18',  'pseudo': 'GTH-PBE-q18' },
+    'Ag': {'basis': 'DZVP-MOLOPT-SR-GTH-q11',  'pseudo': 'GTH-PBE-q11' },
+    'Cd': {'basis': 'DZVP-MOLOPT-SR-GTH-q12',  'pseudo': 'GTH-PBE-q12' },
+    'In': {'basis': 'DZVP-MOLOPT-SR-GTH-q13',  'pseudo': 'GTH-PBE-q13' },
+    'Sn': {'basis': 'DZVP-MOLOPT-SR-GTH-q4',   'pseudo': 'GTH-PBE-q4' },
+    'Sb': {'basis': 'DZVP-MOLOPT-SR-GTH-q5',   'pseudo': 'GTH-PBE-q5' },
+    'Te': {'basis': 'DZVP-MOLOPT-SR-GTH-q6',   'pseudo': 'GTH-PBE-q6' },
+    'I':  {'basis': 'DZVP-MOLOPT-SR-GTH-q7',   'pseudo': 'GTH-PBE-q7' },
+    'Xe': {'basis': 'DZVP-MOLOPT-SR-GTH-q8',   'pseudo': 'GTH-PBE-q8' },
+    'Cs': {'basis': 'DZVP-MOLOPT-SR-GTH-q9',   'pseudo': 'GTH-PBE-q9' },
+    'Ba': {'basis': 'DZVP-MOLOPT-SR-GTH-q10',  'pseudo': 'GTH-PBE-q10' },
+    'La': {'basis': 'DZVP-MOLOPT-SR-GTH-q11',  'pseudo': 'GTH-PBE-q11' },
+    'Ce': {'basis': 'DZVP-MOLOPT-SR-GTH-q12',  'pseudo': 'GTH-PBE-q12' },
+    'Pr': {'basis': 'DZVP-MOLOPT-SR-GTH-q13',  'pseudo': 'GTH-PBE-q13' },
+    'Nd': {'basis': 'DZVP-MOLOPT-SR-GTH-q14',  'pseudo': 'GTH-PBE-q14' },
+    'Pm': {'basis': 'DZVP-MOLOPT-SR-GTH-q15',  'pseudo': 'GTH-PBE-q15' },
+    'Sm': {'basis': 'DZVP-MOLOPT-SR-GTH-q16',  'pseudo': 'GTH-PBE-q16' },
+    'Eu': {'basis': 'DZVP-MOLOPT-SR-GTH-q17',  'pseudo': 'GTH-PBE-q17' },
+    'Gd': {'basis': 'DZVP-MOLOPT-SR-GTH-q18',  'pseudo': 'GTH-PBE-q18' },
+    'Tb': {'basis': 'DZVP-MOLOPT-SR-GTH-q19',  'pseudo': 'GTH-PBE-q19' },
+    'Dy': {'basis': 'DZVP-MOLOPT-SR-GTH-q20',  'pseudo': 'GTH-PBE-q20' },
+    'Ho': {'basis': 'DZVP-MOLOPT-SR-GTH-q21',  'pseudo': 'GTH-PBE-q21' },
+    'Er': {'basis': 'DZVP-MOLOPT-SR-GTH-q22',  'pseudo': 'GTH-PBE-q22' },
+    'Tm': {'basis': 'DZVP-MOLOPT-SR-GTH-q23',  'pseudo': 'GTH-PBE-q23' },
+    'Yb': {'basis': 'DZVP-MOLOPT-SR-GTH-q24',  'pseudo': 'GTH-PBE-q24' },
+    'Lu': {'basis': 'DZVP-MOLOPT-SR-GTH-q25',  'pseudo': 'GTH-PBE-q25' },
+    'Hf': {'basis': 'DZVP-MOLOPT-SR-GTH-q12',  'pseudo': 'GTH-PBE-q12' },
+    'Ta': {'basis': 'DZVP-MOLOPT-SR-GTH-q13',  'pseudo': 'GTH-PBE-q13' },
+    'W':  {'basis': 'DZVP-MOLOPT-SR-GTH-q14',  'pseudo': 'GTH-PBE-q14' },
+    'Re': {'basis': 'DZVP-MOLOPT-SR-GTH-q15',  'pseudo': 'GTH-PBE-q15' },
+    'Os': {'basis': 'DZVP-MOLOPT-SR-GTH-q16',  'pseudo': 'GTH-PBE-q16' },
+    'Ir': {'basis': 'DZVP-MOLOPT-SR-GTH-q17',  'pseudo': 'GTH-PBE-q17' },
+    'Pt': {'basis': 'DZVP-MOLOPT-SR-GTH-q18',  'pseudo': 'GTH-PBE-q18' },
+    'Au': {'basis': 'DZVP-MOLOPT-SR-GTH-q11',  'pseudo': 'GTH-PBE-q11' },
+    'Hg': {'basis': 'DZVP-MOLOPT-SR-GTH-q12',  'pseudo': 'GTH-PBE-q12' },
+    'Tl': {'basis': 'DZVP-MOLOPT-SR-GTH-q13',  'pseudo': 'GTH-PBE-q13' },
+    'Pb': {'basis': 'DZVP-MOLOPT-SR-GTH-q4',   'pseudo': 'GTH-PBE-q4' },
+    'Bi': {'basis': 'DZVP-MOLOPT-SR-GTH-q5',   'pseudo': 'GTH-PBE-q5' },
+    'Po': {'basis': 'DZVP-MOLOPT-SR-GTH-q6',   'pseudo': 'GTH-PBE-q6' },
+    'At': {'basis': 'DZVP-MOLOPT-SR-GTH-q7',   'pseudo': 'GTH-PBE-q7' },
+    'Rn': {'basis': 'DZVP-MOLOPT-SR-GTH-q8',   'pseudo': 'GTH-PBE-q8' },
 }
 
 # ## ----------------------------------------------------------------
