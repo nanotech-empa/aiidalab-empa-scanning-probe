@@ -77,6 +77,10 @@ class STMWorkChain(WorkChain):
             n_machines = 12
         if self.ctx.n_atoms > 2000:
             n_machines = 18
+        if self.ctx.n_atoms > 3000:
+            n_machines = 24
+        if self.ctx.n_atoms > 4000:
+            n_machines = 30
         
         inputs['metadata']['options'] = {
             "resources": {"num_machines": n_machines},
@@ -132,6 +136,10 @@ class STMWorkChain(WorkChain):
             num_machines = 27
         if n_atoms > 1200:
             num_machines = 48
+        if n_atoms > 2400:
+            num_machines = 60
+        if n_atoms > 3600:
+            num_machines = 75
         walltime = 86400
         
         wfn_file = ""
