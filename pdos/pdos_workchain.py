@@ -134,7 +134,7 @@ class PdosWorkChain(WorkChain):
         
         inputs['metadata']['options'] = {
             "resources": {"num_machines": n_machines},
-            "max_wallclock_seconds": 10600,
+            "max_wallclock_seconds": 86400,
         } 
         
         settings = Dict(dict={'additional_retrieve_list': ['overlap.npz']})
