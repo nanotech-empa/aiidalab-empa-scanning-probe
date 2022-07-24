@@ -89,7 +89,10 @@ class PdosWorkChain(WorkChain):
     
     def run_scfs(self):
         self.report("Running CP2K diagonalization SCF")
-
+        
+        emax1 = float(self.inputs.overlap_params.get_dict()['--emax1'])
+        nlumo2 = int(self.inputs.overlap_params.get_dict()['--nlumo2'])
+        
         self.ctx.n_all_atoms = len(self.inputs.slabsys_structure.sites)
         
         slab_inputs = self.build_slab_cp2k_inputs(
@@ -97,7 +100,8 @@ class PdosWorkChain(WorkChain):
                         self.inputs.pdos_lists,
                         self.inputs.cp2k_code,
                         self.inputs.wfn_file_path.value,
-                        self.inputs.dft_params.get_dict())
+                        self.inputs.dft_params.get_dict(),
+                        emax1)
         self.report("slab_inputs: "+str(slab_inputs))
         
         slab_future = self.submit(Cp2kCalculation, **slab_inputs)
@@ -106,7 +110,8 @@ class PdosWorkChain(WorkChain):
         mol_inputs = self.build_mol_cp2k_inputs(
                         self.inputs.mol_structure,
                         self.inputs.cp2k_code,
-                        self.ctx.mol_dft_params)
+                        self.ctx.mol_dft_params,
+                        nlumo2)
         self.report("mol_inputs: "+str(mol_inputs))
         
         mol_future = self.submit(Cp2kCalculation, **mol_inputs)
@@ -152,7 +157,7 @@ class PdosWorkChain(WorkChain):
      # ==========================================================================
     @classmethod
     def build_slab_cp2k_inputs(cls, structure, pdos_lists, code,
-                          wfn_file_path, dft_params):
+                          wfn_file_path, dft_params, emax):
 
         inputs = {}
         inputs['metadata'] = {}
@@ -192,11 +197,14 @@ class PdosWorkChain(WorkChain):
         wfn_file = ""
         if wfn_file_path != "":
             wfn_file = os.path.basename(wfn_file_path)
+            
+        added_mos = np.max([100, int(n_atoms*emax/5.0)])
 
         inp = cls.get_cp2k_input(dft_params,
                                  cell_abc,
                                  walltime*0.97,
                                  wfn_file,
+                                 added_mos,
                                  atoms,
                                  pdos_lists)
 
@@ -220,7 +228,7 @@ class PdosWorkChain(WorkChain):
     
     # ==========================================================================
     @classmethod
-    def build_mol_cp2k_inputs(cls, structure, code, dft_params):
+    def build_mol_cp2k_inputs(cls, structure, code, dft_params, nlumo):
 
         inputs = {}
         inputs['metadata'] = {}
@@ -256,6 +264,7 @@ class PdosWorkChain(WorkChain):
                                  cell_abc,
                                  walltime*0.97,
                                  "",
+                                 nlumo+2,
                                  atoms)
 
         inputs['parameters'] = Dict(dict=inp)
@@ -276,7 +285,7 @@ class PdosWorkChain(WorkChain):
 
     # ==========================================================================
     @classmethod
-    def get_cp2k_input(cls, dft_params, cell_abc, walltime, wfn_file, atoms, pdos_lists=None):
+    def get_cp2k_input(cls, dft_params, cell_abc, walltime, wfn_file, added_mos, atoms, pdos_lists=None):
 
         inp = {
             'GLOBAL': {
@@ -286,7 +295,7 @@ class PdosWorkChain(WorkChain):
                 'EXTENDED_FFT_LENGTHS': ''
             },
             'FORCE_EVAL': cls.get_force_eval_qs_dft(dft_params, cell_abc,
-                                                    wfn_file, atoms, pdos_lists),
+                                                    wfn_file, added_mos, atoms, pdos_lists),
         }
         
         if dft_params['elpa_switch']:
@@ -298,7 +307,7 @@ class PdosWorkChain(WorkChain):
 
     # ==========================================================================
     @classmethod
-    def get_force_eval_qs_dft(cls, dft_params, cell_abc, wfn_file, atoms, pdos_lists=None):
+    def get_force_eval_qs_dft(cls, dft_params, cell_abc, wfn_file, added_mos, atoms, pdos_lists=None):
         force_eval = {
             'METHOD': 'Quickstep',
             'DFT': {
@@ -319,7 +328,7 @@ class PdosWorkChain(WorkChain):
                     'MAX_SCF': '1000',
                     'SCF_GUESS': 'RESTART',
                     'EPS_SCF': '1.0E-7',
-                    'ADDED_MOS': '800',
+                    'ADDED_MOS': str(added_mos),
                     'CHOLESKY': 'INVERSE',
                     'DIAGONALIZATION': {
                         '_': '',

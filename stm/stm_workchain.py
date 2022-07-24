@@ -146,7 +146,7 @@ class STMWorkChain(WorkChain):
         if wfn_file_path != "":
             wfn_file = os.path.basename(wfn_file_path)
             
-        added_mos = np.max([100, int(n_atoms*emax/6.0)])
+        added_mos = np.max([100, int(n_atoms*emax/5.0)])
 
         inp = cls.get_cp2k_input(dft_params,
                                  cell_abc,
