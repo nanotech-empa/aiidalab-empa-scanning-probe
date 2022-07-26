@@ -11,8 +11,11 @@ from IPython.display import display, clear_output, HTML
 
 import matplotlib
 import matplotlib.pyplot as plt
+from aiida_openbis.utils import bisutils
 
 from apps.scanning_probe import igor
+
+from aiida.orm import load_node
 
 colormaps = ['seismic', 'gist_heat']
 
@@ -135,6 +138,9 @@ class SeriesPlotter():
         
         ### -------------------------------------------
         ### Creating a zip
+        
+        self.zip_filename = None
+        
         self.zip_btn = ipw.Button(description='Image zip', disabled=True)
         self.zip_btn.on_click(self.create_zip_link)
 
@@ -148,6 +154,21 @@ class SeriesPlotter():
             )
 
         self.link_out = ipw.Output()
+        
+        ### -------------------------------------------
+        ### Export to openbis
+        
+        self.openbis_btn = ipw.Button(description='Export to openBIS', disabled=True)
+        self.openbis_btn.on_click(self.export_zip_to_openbis)
+        
+        ### -------------------------------------------
+    
+        
+    def export_zip_to_openbis(self, b):        
+        export = bisutils.aiidalab_spm(
+            zip_path="tmp/"+self.zip_filename,
+            pk=self.wc_pk,
+        )
         
 
     def add_series_collection(self, general_info, series_info, series_data):
@@ -304,7 +325,7 @@ class SeriesPlotter():
         
         self.zip_btn.disabled = True
         
-        filename = "%s_pk%d.zip" % (self.zip_prepend, self.wc_pk)
+        self.zip_filename = "%s_pk%d.zip" % (self.zip_prepend, self.wc_pk)
 
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED, False) as zip_file:
@@ -312,11 +333,13 @@ class SeriesPlotter():
 
         os.makedirs("tmp", exist_ok=True)
 
-        with open('tmp/'+filename, 'wb') as f:
+        with open('tmp/'+self.zip_filename, 'wb') as f:
             f.write(zip_buffer.getvalue())
 
         with self.link_out:
-            display(HTML('<a href="tmp/%s" target="_blank">download zip</a>' % filename))
+            display(HTML('<a href="tmp/%s" target="_blank">download zip</a>' % self.zip_filename))
+            
+        self.openbis_btn.disabled = False
         
     def data_to_zip(self, zip_file):
         
