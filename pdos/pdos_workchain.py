@@ -33,6 +33,10 @@ class PdosWorkChain(WorkChain):
         spec.input("mol_structure", valid_type=StructureData)
         spec.input("pdos_lists", valid_type=List)
         spec.input("wfn_file_path", valid_type=Str, default=lambda: orm.Str(""))
+        spec.input("scf_diag",
+                   valid_type=orm.Bool,
+                   required=False,
+                   default=lambda: orm.Bool(False))        
         
         spec.input("dft_params", valid_type=Dict)
         
@@ -42,6 +46,7 @@ class PdosWorkChain(WorkChain):
         spec.outline(
             cls.setup,
             cls.run_scfs,
+            cls.run_diags,
             cls.run_overlap,
             cls.finalize,
         )
