@@ -16,8 +16,8 @@ import matplotlib.pyplot as plt
 
 from apps.scanning_probe import common
 
-#### ---------------------------------------------------------------------
-#### PDOS processing
+# ### ---------------------------------------------------------------------
+# ### PDOS processing
 
 def read_and_process_pdos_file(pdos_path):
     header = open(pdos_path).readline()
@@ -39,7 +39,7 @@ def read_and_process_pdos_file(pdos_path):
     out_data[:, 0] = (data[:, 1] - fermi) * 27.21138602 # energy
     out_data[:, 1] = np.sum(data[:, 3:], axis=1) # "contracted pdos"
     return out_data, kind
-    
+
 
 def process_pdos_files(scf_calc):
     retr_files = scf_calc.outputs.retrieved.list_object_names()
@@ -98,7 +98,7 @@ def process_pdos_files(scf_calc):
     dos['tdos'] = tdos
     return dos
 
-#### ---------------------------------------------------------------------
+# ### ---------------------------------------------------------------------
 
 def create_series_w_broadening(x_values, y_values, x_arr, fwhm, shape='g'):
     spectrum = np.zeros(len(x_arr))
@@ -189,7 +189,7 @@ def load_overlap_npz(npz_path):
     overlap_data['overlap_matrix'] = match_and_reduce_spin_channels(overlap_data['overlap_matrix'])
     
     return overlap_data
-    
+
 def get_orbital_label(i_orb_wrt_homo):
     if i_orb_wrt_homo < 0:
         label = "HOMO%+d" % i_orb_wrt_homo
@@ -218,7 +218,7 @@ def get_full_orbital_label(i_spin, i_orb, overlap_data):
         index = overlap_data['orb_indexes_g2'][i_spin][i_orb]
         full_label = f'MO{index:2} {full_label}'
     return full_label
-    
+
 
 def get_full_orbital_labels(overlap_data):
     labels = []
@@ -227,5 +227,5 @@ def get_full_orbital_labels(overlap_data):
         for i_orb in range(len(overlap_data['energies_g2'][i_spin])):
             labels[-1].append(get_full_orbital_label(i_spin, i_orb, overlap_data))
     return labels
-    
+
     
