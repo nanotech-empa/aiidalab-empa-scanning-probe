@@ -42,7 +42,10 @@ def read_and_process_pdos_file(pdos_path):
 
 
 def process_pdos_files(scf_calc):
-    retr_files = scf_calc.outputs.retrieved.list_object_names()
+    try:
+        retr_files = scf_calc.outputs.retrieved.list_object_names()
+    except:
+        retr_files = scf_calc.called[0].outputs.retrieved.list_object_names()
 
     nspin = 1
     for file in retr_files:
