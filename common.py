@@ -465,17 +465,18 @@ def check_if_calc_ok(self_, prev_calc):
 
     return True
 
-def create_stm_parameters(extrap_plane,const_height_text,
-                          struct_symbols,
-                          parent_dir,
-                          elim_float_slider0,
-                          elim_float_slider1,
-                          de_floattext,
-                          energy_range_str,
-                          const_current_text,
-                          fwhms_text,
-                          ptip_floattext
-                          ):
+def create_stm_parameterdata(
+    extrap_plane,
+    const_height_text,
+    struct_symbols,
+    parent_dir,
+    elim_float_slider0,
+    elim_float_slider1,
+    de_floattext,
+    const_current_text,
+    fwhms_text,
+    ptip_floattext
+    ):
         
         max_height = max([float(h) for h in const_height_text])
         extrap_extent = max([max_height - extrap_plane, 5.0])
@@ -501,7 +502,7 @@ def create_stm_parameters(extrap_plane,const_height_text,
             '--dx':                 '0.15',
             '--eval_cutoff':        '16.0',
             '--extrap_extent':      str(extrap_extent),
-            '--energy_range':       energy_range_str,
+            '--energy_range':       energy_range_str.split(),
             '--heights':            const_height_text,
             '--isovalues':          const_current_text,
             '--fwhms':              fwhms_text,
@@ -509,7 +510,7 @@ def create_stm_parameters(extrap_plane,const_height_text,
         }
         return paramdata
 
-def create_orbirals_parameters(extrap_plane,
+def create_orbitals_parameterdata(extrap_plane,
                                heights_text,
                                parent_dir,
                                n_homo_inttext,
@@ -535,7 +536,7 @@ def create_orbirals_parameters(extrap_plane,
             '--orb_heights':        heights_text,
             '--orb_isovalues':      isovals_text,
             '--orb_fwhms':          fwhms_text,
-            '--p_tip_ratios':       ptip_floattext.value,
+            '--p_tip_ratios':       ptip_floattext,
         }
         return paramdata    
 
@@ -623,6 +624,7 @@ def create_hrstm_parameterdata(parent_dir,
                                 workfun_ipw,
                                 orbstip_ipw,
                                 fwhmtip_ipw,
+                                rotate_ipw
                                ):
 # External folders 
         cell = ArrayData()
