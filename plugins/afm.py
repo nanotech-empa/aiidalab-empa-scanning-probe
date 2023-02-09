@@ -18,6 +18,7 @@ class AfmCalculation(CalcJob):
         spec.input('parameters', valid_type=Dict, help='AFM input parameters')
         spec.input('parent_calc_folder', valid_type=RemoteData, help='remote folder')
         spec.input('atomtypes', valid_type=SinglefileData, help='atomtypes.ini file')
+        spec.input('geo_no_labels', valid_type=SinglefileData, help='geometry without spin labels file')
         
         # Don't use mpi by default
         spec.input('metadata.options.withmpi', valid_type=bool, default=False)
@@ -59,7 +60,7 @@ class AfmCalculation(CalcJob):
 
         # file lists
         calcinfo.remote_symlink_list = []
-        calcinfo.local_copy_list = [(self.inputs.atomtypes.uuid, self.inputs.atomtypes.filename, 'atomtypes.ini')]
+        calcinfo.local_copy_list = [(self.inputs.atomtypes.uuid, self.inputs.atomtypes.filename, 'atomtypes.ini'),(self.inputs.geo_no_labels.uuid, self.inputs.geo_no_labels.filename, 'geom.xyz')]
         calcinfo.remote_copy_list = []
         calcinfo.retrieve_list = ["*/*/*.npy"]
         

@@ -13,7 +13,7 @@ from collections import OrderedDict
 import numpy as np
 import ase
 
-from io import StringIO, BytesIO
+from io import StringIO
 import tempfile
 import shutil
 
