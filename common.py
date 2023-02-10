@@ -1,17 +1,16 @@
+import os
 from aiida.orm import WorkChainNode
 from aiida.orm import load_node
 
 from aiida.orm.querybuilder import QueryBuilder
-from aiida.orm import SinglefileData
+from aiida.orm import SinglefileData, ArrayData
 from aiida.orm import Code, Computer
 from aiida.engine import CalcJob
 
 import subprocess
 
-from collections import OrderedDict
 
 import numpy as np
-import ase
 
 from io import StringIO
 import tempfile
@@ -605,7 +604,8 @@ def create_2pp_parameterdata(ase_geom,
     }
     return paramdata
 
-def create_hrstm_parameterdata(parent_dir,
+def create_hrstm_parameterdata(hrstm_code,
+                               parent_dir,
                                ppm_dir,
                                ase_geom,
                                ppm_params_dict,
@@ -658,7 +658,7 @@ def create_hrstm_parameterdata(parent_dir,
             # Sample information
             '--cp2k_input_file': parent_dir+'aiida.inp',
             '--basis_set_file':  parent_dir+'BASIS_MOLOPT',
-            '--xyz_file':        parent_dir+'geom.xyz',
+            '--xyz_file':        parent_dir+'aiida.coords.xyz',
             '--wfn_file':        parent_dir+'aiida-RESTART.wfn',
             '--hartree_file':    parent_dir+'aiida-HART-v_hartree-1_0.cube',
             '--emin':            str(volmin_ipw-2.0*fwhm_ipw),
@@ -674,6 +674,6 @@ def create_hrstm_parameterdata(parent_dir,
             '--tip_pos_files':   tip_pos,
             '--fwhm_tip':        str(fwhmtip_ipw),
         }
-        if rotate_ipw.value:
+        if rotate_ipw:
             paramdata['--rotate'] = ''   
         return paramdata 

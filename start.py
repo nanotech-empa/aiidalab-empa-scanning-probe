@@ -7,13 +7,10 @@ def get_start_widget(appbase, jupbase):
     <tr>
         <th style="text-align:center">General</th>
         <th style="width:50px" rowspan=2></th>
-        <th style="text-align:center">STM</th>
+        <th style="text-align:center">STM and PDOS</th>
         <th style="width:50px" rowspan=2></th>
-        <th style="text-align:center">ORB</th>
+        <th style="text-align:center">Viewers</th>
         <th style="width:50px" rowspan=2></th>
-        <th style="text-align:center">PDOS</th>
-        <th style="width:50px" rowspan=2></th>
-        <th style="text-align:center">AFM</th>
     </tr>
     
     <tr>
@@ -24,38 +21,21 @@ def get_start_widget(appbase, jupbase):
         
         <td valign="top"><ul>
             <li><a href="{appbase}/stm/submit_stm.ipynb" target="_blank">Submit STM</a>
-            <li><a href="{appbase}/stm/view_stm.ipynb" target="_blank">View STM</a>
+            <li><a href="{appbase}/pdos/submit_pdos.ipynb" target="_blank">Submit PDOS</a>
         </ul></td>
         
         <td valign="top"><ul>
-            <li><a href="{appbase}/orb/submit_orb.ipynb" target="_blank">Submit ORB</a>
+            <li><a href="{appbase}/pdos/view_pdos.ipynb" target="_blank">View PDOS</a>
+            <li><a href="{appbase}/stm/view_stm.ipynb" target="_blank">View STM</a>
+            <li><a href="{appbase}/afm/view_afm.ipynb" target="_blank">View AFM</a>
+            <li><a href="{appbase}/hrstm/view_hrstm.ipynb" target="_blank">View HR-STM</a>
             <li><a href="{appbase}/orb/view_orb.ipynb" target="_blank">View ORB</a>
         </ul></td>
 
-        <td valign="top"><ul>
-            <li><a href="{appbase}/pdos/submit_pdos.ipynb" target="_blank">Submit PDOS</a>
-            <li><a href="{appbase}/pdos/view_pdos.ipynb" target="_blank">View PDOS</a>
-        </ul></td>
 
-        <td valign="top"><ul>
-            <li><a href="{appbase}/afm/submit_afm.ipynb" target="_blank">Submit AFM</a>
-            <li><a href="{appbase}/afm/view_afm.ipynb" target="_blank">View AFM</a>
-        </ul></td>
     </tr>
     </table>
 
-    <table>
-    <tr>
-        <th style="text-align:center">HR-STM</th>
-    </tr>
-
-    <tr>
-        <td valign="top"><ul>
-            <li><a href="{appbase}/hrstm/submit_hrstm.ipynb" target="_blank">Submit HR-STM</a>
-            <li><a href="{appbase}/hrstm/view_hrstm.ipynb" target="_blank">View HR-STM</a>
-        </ul></td>
-    </tr>
-    </table>
 """
     
     html = template.format(appbase=appbase, jupbase=jupbase)
