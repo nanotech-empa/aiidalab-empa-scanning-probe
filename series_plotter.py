@@ -12,7 +12,7 @@ from IPython.display import display, clear_output, HTML
 import matplotlib
 import matplotlib.pyplot as plt
 
-from apps.scanning_probe import igor
+import igor
 
 colormaps = ['seismic', 'gist_heat']
 

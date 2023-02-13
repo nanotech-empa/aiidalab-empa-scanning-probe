@@ -14,13 +14,16 @@ import copy
 import matplotlib
 import matplotlib.pyplot as plt
 
-from apps.scanning_probe import common
+import common
 
 # ### ---------------------------------------------------------------------
 # ### PDOS processing
 
 def read_and_process_pdos_file(pdos_path):
-    header = open(pdos_path).readline()
+    try:
+        header = open(pdos_path).readline()
+    except TypeError:
+        header = pdos_path.readline()
     #fermi = float(re.search("Fermi.* ([+-]?[0-9]*[.]?[0-9]+)", header).group(1))
     try:
         kind = re.search("atomic kind.(\S+)", header).group(1)
@@ -41,11 +44,13 @@ def read_and_process_pdos_file(pdos_path):
     return out_data, kind
 
 
-def process_pdos_files(scf_calc):
-    try:
+def process_pdos_files(scf_calc,newversion):
+    if newversion:
+        retr_files = scf_calc.outputs.slab_retrieved.list_object_names()
+        retr_folder = scf_calc.outputs.slab_retrieved
+    else:
         retr_files = scf_calc.outputs.retrieved.list_object_names()
-    except:
-        retr_files = scf_calc.called[0].outputs.retrieved.list_object_names()
+        retr_folder = scf_calc.outputs.retrieved
 
     nspin = 1
     for file in retr_files:
@@ -61,8 +66,11 @@ def process_pdos_files(scf_calc):
         
         if file.endswith('.pdos'):
             
-            with scf_calc.outputs.retrieved.open(file) as fhandle:
-                path = fhandle.name
+            with retr_folder.open(file) as fhandle:
+                try:
+                    path = fhandle.name
+                except AttributeError:
+                    path = fhandle
 
                 if 'BETA' in file:
                     i_spin = 1
